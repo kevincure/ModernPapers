@@ -433,7 +433,9 @@
             max-width: 100%;
             font-size: 0.9rem;
         } 
-
+        
+        #popup .popup-content { word-wrap: break-word; overflow-wrap: anywhere; }
+        
         .popup.visible {
             display: block;
         }
@@ -1611,25 +1613,43 @@ const responseData = await postGemini({
 
         function positionPopup(popup, targetRect) {
             const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
-            const viewportHeight = window.innerHeight;
+            // const viewportHeight = window.innerHeight;
+            const vw = window.innerWidth;
+            const vh = window.innerHeight;
+            popup.style.display = 'block'; // measure
+            const popupRect = popup.getBoundingClientRect();
+
+            let left = targetRect.left;
+
+            // clamp so it can't overflow the viewport
+            if (left + popupRect.width > vw - 8) left = vw - popupRect.width - 8;
+            if (left < 8) left = 8;
+            popup.style.left = left + 'px';
+
+            // below by default; flip above if needed
+            let top = targetRect.bottom + scrollTop + 5;
+            if (top - scrollTop + popupRect.height > vh - 20) {
+              top = targetRect.top + scrollTop - popupRect.height - 5;
+            }
+            popup.style.top = top + 'px';
             
             // Position horizontally centered on target
-            const left = targetRect.left;
-            popup.style.left = left + 'px';
-            popup.style.maxWidth = '400px';
+            // const left = targetRect.left;
+            // popup.style.left = left + 'px';
+            // popup.style.maxWidth = '400px';
             
             // Try positioning below the target first
-            let top = targetRect.bottom + scrollTop + 5;
-            popup.style.top = top + 'px';
-            popup.style.display = 'block'; // Temporarily show to get dimensions
+            // let top = targetRect.bottom + scrollTop + 5;
+            // popup.style.top = top + 'px';
+            // popup.style.display = 'block'; // Temporarily show to get dimensions
             
             // Check if it goes off bottom of viewport
-            const popupRect = popup.getBoundingClientRect();
-            if (popupRect.bottom > viewportHeight - 20) {
+            // const popupRect = popup.getBoundingClientRect();
+            // if (popupRect.bottom > viewportHeight - 20) {
                 // Position above instead
-                top = targetRect.top + scrollTop - popupRect.height - 5;
-                popup.style.top = top + 'px';
-            }
+         //       top = targetRect.top + scrollTop - popupRect.height - 5;
+          //      popup.style.top = top + 'px';
+          //  }
         }
 
         function hidePopup() {
