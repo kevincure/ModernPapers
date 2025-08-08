@@ -1,6 +1,6 @@
-# ModernPapers, Kevin Bryan, August 2025, MIT Licenes
+# ModernPapers, Kevin Bryan, August 2025, MIT License
 
-Reading PDFs sucks.  Reading static documents sucked. Reading documents you have to Ctrl-F to look things up sucks. But all of our research, especially old research, is in thse pdfs. Here's a one file html, using only free tier LLM access, that 1) rips your pdf or latex+bib articles into a standard XML format, 2) creates a clean frontend to display this to readers, 3) uses AI to provide a "short summary" for layman readers, 4) includes a more complex AI to query the document with high quality, quickly, and a clean UI. And it's free, even the AI.
+Reading PDFs sucks.  Reading static documents sucked. Reading documents you have to Ctrl-F to look things up sucks. But all of our research, especially old research, is in these pdfs. Here's a one file html, using only free tier LLM access, that 1) rips your pdf or latex+bib articles into a standard XML format, 2) creates a clean frontend to display this to readers, 3) uses AI to provide a "short summary" for lay readers, 4) includes a more complex AI to query the document with high quality, quickly, and a clean UI. And it's free, even the AI.
 
 You can find examples at https://kevinbryanecon.com/ModernPapers/?data=BryanHoffmanSariri2025/paper.xml and https://kevinbryanecon.com/ModernPapers/?data=BryanGuzman2023/paper.xml. Without the url query, you'll go to a paper upload mode.  Once in a while there is an XML error you may have to clean up. The only other thing you have to do is to put the xml in a folder, add the figures (generally named fig_1.png, fig_2.png, etc.) to the folder, and you are live!
 
