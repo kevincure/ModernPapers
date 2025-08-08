@@ -1,2 +1,13 @@
-# ModernPapers
-Convert pdf or latex papers to AI-enhanced, html, clean design research almost automatically
+# ModernPapers, Kevin Bryan, August 2025, MIT Licenes
+
+Reading PDFs sucks.  Reading static documents sucked. Reading documents you have to Ctrl-F to look things up sucks. But all of our research, especially old research, is in thse pdfs. Here's a one file html, using only free tier LLM access, that 1) rips your pdf or latex+bib articles into a standard XML format, 2) creates a clean frontend to display this to readers, 3) uses AI to provide a "short summary" for layman readers, 4) includes a more complex AI to query the document with high quality, quickly, and a clean UI. And it's free, even the AI.
+
+You can find examples at https://kevinbryanecon.com/ModernPapers/?data=BryanHoffmanSariri2025/paper.xml and https://kevinbryanecon.com/ModernPapers/?data=BryanGuzman2023/paper.xml. Without the url query, you'll go to a paper upload mode.  Once in a while there is an XML error you may have to clean up. The only other thing you have to do is to put the xml in a folder, add the figures (generally named fig_1.png, fig_2.png, etc.) to the folder, and you are live!
+
+My other tools are at https://kevinbryanecon.com/tools.html and on this Git.  Of course, if you teach at a university, you must check out All Day TA (https://www.alldayta.com) which is this type of AI tool times one thousand.
+
+How to set up? You will need a Google API key (aistudio.google.com); the free tier is sufficient for this use case.  If you have your own website, create a .htaccess with SetEnv GEMINI_API_KEY (your key here).  If you don't have this, the site will just ask you to paste in a Gemini key once per session.
+
+To run this locally on your computer, go from the command prompt to the folder where you have index.html, type py -m http.server 8000.  Then go to localhost:8000 in your browser and you'll see the site. If you have no url query (the part of the website after the ?), you will just open a site that you create an XML file from your document then download it. If you have already done this and gotten your images set in some folder, just open localhost:8000?data=/FolderName/xmlfilename.xml.  If you put this on your own website, all is identical except you can use the .php (in this Git) and .htaccess (described above) to allow users without a key to use AI to talk to your papers.
+
+Let me know if you modify and improve (I already have in mind an 'adaptive' paper that goes from 500 words for the public, to 2000 words Quanta magazine style, to a review article description, to full details, with users able to choose and expand at will and AI handling those summarizations).  A new way to read academic research is en route.
