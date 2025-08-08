@@ -1,0 +1,1897 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Academic Paper Viewer</title>
+    
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- MATHJAX CONFIGURATION -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']],
+                processEscapes: true
+            },
+            chtml: {
+                displayAlign: 'center',
+                displayIndent: '0'
+            },
+            svg: {
+                displayAlign: 'center',
+                displayIndent: '0'
+            }
+        };
+    </script>
+    <script id="MathJax-script" defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- STYLES -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <style>
+        /* ─────────────────────────────────────────────────────────────── */
+        /* CORE DESIGN SYSTEM */
+        /* ─────────────────────────────────────────────────────────────── */
+        :root {
+            --font-serif: 'Georgia', 'Times New Roman', serif;
+            --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            --bg-color: #fffff8;
+            --text-color: #1a1a1a;
+            --border-color: #d4d4d4;
+            --link-color: #2563eb;
+            --hover-bg: rgba(255, 229, 153, 0.2);
+            --section-collapsed-bg: #f9f9f0;
+            --popup-shadow: 0 10px 40px rgba(0,0,0,0.15);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: var(--font-serif);
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            line-height: 1.7;
+            display: flex;
+            min-height: 100vh;
+        }
+
+        a[href^="#"] {
+            text-decoration: none;
+        }
+
+        p {
+            margin: 0 0 1em;
+        }
+
+        /* ─────────────────────────────────────────────────────────────── */
+        /* SIDEBAR NAVIGATION */
+        /* ─────────────────────────────────────────────────────────────── */
+        .sidebar {
+            position: fixed;
+            left: 0;
+            top: 0;
+            width: 280px;
+            height: 100vh;
+            background: white;
+            border-right: 1px solid var(--border-color);
+            overflow-y: auto;
+            padding: 20px;
+            font-family: var(--font-sans);
+        }
+
+        .sidebar h3 {
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #666;
+            margin-bottom: 12px;
+            margin-top: 20px;
+        }
+
+        .sidebar ul {
+            list-style: none;
+        }
+
+        .sidebar li {
+            margin-bottom: 8px;
+        }
+
+        .sidebar a {
+            color: var(--text-color);
+            text-decoration: none;
+            font-size: 0.9rem;
+            display: block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            transition: all 0.2s;
+        }
+
+        .sidebar a:hover {
+            background: var(--hover-bg);
+        }
+
+        .sidebar .subsection {
+            padding-left: 16px;
+            font-size: 0.85rem;
+        }
+
+        /* ─────────────────────────────────────────────────────────────── */
+        /* MAIN CONTENT AREA */
+        /* ─────────────────────────────────────────────────────────────── */
+        .main-content {
+            margin-left: 280px;
+            flex: 1;
+            font-size: 18px;
+            max-width: 850px;
+            padding: 60px 80px;
+        }
+
+        .paper-header {
+            margin-bottom: 40px;
+            padding-bottom: 30px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .paper-title {
+            font-size: 2.2rem;
+            line-height: 1.3;
+            margin-bottom: 16px;
+            font-weight: 400;
+        }
+
+        .paper-authors {
+            font-size: 1.1rem;
+            color: #555;
+            margin-bottom: 8px;
+        }
+
+        .paper-metadata {
+            font-family: var(--font-sans);
+            font-size: 0.9rem;
+            color: #666;
+            margin-top: 12px;
+            display: flex; 
+            justify-content: space-between;
+        }
+
+        .abstract {
+            background: #f9f9f0;
+            padding: 20px;
+            border-radius: 6px;
+            margin: 24px 0;
+            font-size: 0.95rem;
+            line-height: 1.65;
+        }
+
+        .abstract-label {
+            font-weight: 600;
+            margin-bottom: 8px;
+            font-style: italic;
+        }
+
+        /* ─────────────────────────────────────────────────────────────── */
+        /* SECTIONS AND COLLAPSIBLE CONTENT */
+        /* ─────────────────────────────────────────────────────────────── */
+        .section {
+            margin-bottom: 32px;
+            position: relative;
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 22px;
+            cursor: pointer;
+            padding: 8px 0;
+            user-select: none;
+        }
+
+        .section-header:hover {
+            background: var(--hover-bg);
+            margin-left: -8px;
+            padding-left: 8px;
+            border-radius: 4px;
+        }
+
+        .section-toggle {
+            margin-right: 8px;
+            font-family: var(--font-sans);
+            font-size: 0.8rem;
+            color: #999;
+            transition: transform 0.2s;
+        }
+
+        .section-toggle.collapsed {
+            transform: rotate(-90deg);
+        }
+
+        .section h2 {
+            font-size: 1.5rem;
+            font-weight: 500;
+        }
+
+        .section h3 {
+            font-size: 1.2rem;
+            font-weight: 500;
+            margin-top: 24px;
+            margin-bottom: 12px;
+        }
+
+        .section-level-2 h2 { 
+            font-size: 1.3rem; 
+        }
+
+        .section-level-3 h3 { 
+            font-size: 1.1rem; 
+        }
+
+        .section-content {
+            transition: all 0.3s ease;
+            overflow: hidden;
+            max-height: 100000px; /* Large number for animation */
+        }
+
+        .section-content.collapsed {
+            max-height: 0;
+            opacity: 0;
+            padding: 0;
+            margin: 0;
+        }
+
+        .section-summary {
+            background: var(--section-collapsed-bg);
+            padding: 12px 16px;
+            border-radius: 4px;
+            font-style: italic;
+            font-size: 0.95rem;
+            color: #666;
+            margin-bottom: 16px;
+            display: none;
+        }
+
+        .section-summary.visible {
+            display: block;
+        }
+
+        /* ─────────────────────────────────────────────────────────────── */
+        /* ACADEMIC CONTENT ELEMENTS */
+        /* ─────────────────────────────────────────────────────────────── */
+        .theorem, .proof, .proposition, .lemma, .definition, .assumption, .remark, .corollary, .example {
+            margin: 20px 0;
+            padding: 16px;
+            background: #f5f5f0;
+            border-left: 3px solid #999;
+            border-radius: 0 4px 4px 0;
+        }
+
+        .definition {
+            border-left-color: #4a90e2;
+        }
+
+        .assumption {
+            border-left-color: #e67e22;
+        }
+
+        .remark, .example {
+            border-left-color: #95a5a6;
+            background: #f8f8f5;
+        }
+
+        .theorem-header {
+            font-weight: 600;
+            margin-bottom: 8px;
+            font-style: italic;
+        }
+
+        /* ─────────────────────────────────────────────────────────────── */
+        /* MATHEMATICAL EQUATIONS */
+        /* ─────────────────────────────────────────────────────────────── */
+        .equation-display {
+            display: flex;
+            justify-content: center;
+            margin: 0 0;
+        }
+
+        mjx-container[display="true"] {
+            margin: 1em auto !important;
+        }
+
+        /* ─────────────────────────────────────────────────────────────── */
+        /* FIGURES AND IMAGES */
+        /* ─────────────────────────────────────────────────────────────── */
+        .figure {
+            overflow: hidden;
+            position: relative;
+            text-align: center;
+        }
+
+        .figure img {
+            max-width: 100%;
+            max-height: 75vh; /* ≤ 75% of viewport height */
+            transition: transform 0.2s ease;
+            transform-origin: center center; /* default */
+        }
+
+        .figure:hover img {
+            transform: scale(1.5);
+            cursor: zoom-in;
+        }
+
+        .figure-caption {
+            margin-top: 12px;
+            font-size: 0.9rem;
+            color: #666;
+            font-style: italic;
+            text-align: left;
+            max-width: 90%;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        /* ─────────────────────────────────────────────────────────────── */
+        /* TABLES */
+        /* ─────────────────────────────────────────────────────────────── */
+        .table-container {
+            margin: 24px 0;
+            overflow-x: auto;
+        }
+
+        .table-container table {
+            border-collapse: collapse;
+            width: 100%;
+            font-size: 0.9rem;
+        }
+
+        .table-container th,
+        .table-container td {
+            padding: 8px 12px;
+            text-align: left;
+            border: 1px solid var(--border-color);
+        }
+
+        .table-container th {
+            background: #f5f5f0;
+            font-weight: 600;
+        }
+
+        .table-caption {
+            margin-top: 8px;
+            font-size: 0.9rem;
+            color: #666;
+            font-style: italic;
+        }
+
+        /* ─────────────────────────────────────────────────────────────── */
+        /* LIST STYLES */
+        /* ─────────────────────────────────────────────────────────────── */
+        ul.bullet-list, ol.numbered-list {
+            margin: 1em 0;
+            padding-left: 2em;
+        }
+
+        ul.bullet-list li, ol.numbered-list li {
+            margin-bottom: 0.5em;
+        }
+
+        /* ─────────────────────────────────────────────────────────────── */
+        /* CITATIONS AND REFERENCES */
+        /* ─────────────────────────────────────────────────────────────── */
+        .citation, .xref {
+            display: inline;
+            text-decoration: none;
+            color: inherit;
+            cursor: pointer;
+        }
+
+        .citation {
+            color: var(--link-color);
+        }
+
+        .citation:hover {
+            background: var(--hover-bg);
+            text-decoration: underline;
+        }
+
+        .xref {
+            color: var(--link-color);
+        }
+
+        .xref:hover {
+            text-decoration: underline;
+        }
+
+        .footnote-ref {
+            vertical-align: super;
+            font-size: 0.8em;
+            color: var(--link-color);
+            cursor: pointer;
+            margin-left: 1px;
+        }
+
+        .footnote-ref:hover {
+            text-decoration: underline;
+        }
+
+        /* ─────────────────────────────────────────────────────────────── */
+        /* POPUP WINDOWS */
+        /* ─────────────────────────────────────────────────────────────── */
+        .popup {  
+            display: none;
+            position: absolute;
+            padding: 12px 16px;             
+            background: white;  
+            border: 1px solid var(--border-color);  
+            border-radius: 6px;  
+            box-shadow: var(--popup-shadow);  
+            z-index: 1000;
+            max-width: 100%;
+            font-size: 0.9rem;
+        } 
+
+        .popup.visible {
+            display: block;
+        }
+
+        .citation-popup {
+            font-family: var(--font-sans);
+        }
+
+        .citation-title {
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .citation-authors {
+            color: #666;
+            font-size: 0.85rem;
+            margin-bottom: 8px;
+        }
+
+        .citation-link {
+            color: var(--link-color);
+            text-decoration: none;
+            font-size: 0.85rem;
+        }
+
+        /* ─────────────────────────────────────────────────────────────── */
+        /* BUTTONS AND CONTROLS */
+        /* ─────────────────────────────────────────────────────────────── */
+        .talk-button {
+            width: 100%;
+            padding: 10px;
+            background: #333;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: var(--font-sans);
+            margin-bottom: 12px;
+        }
+
+        .talk-button:hover {
+            background: #111;
+        }
+
+        .plaintext-button {
+            width: 100%;
+            padding: 8px 12px;
+            margin-bottom: 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            background: #f9f9f0;
+            font-family: var(--font-sans);
+            font-size: 0.9rem;
+            cursor: pointer;
+        }
+
+        .plaintext-button:hover {
+            background: #ece8d3;
+        }
+
+        .minimize-btn, .close-btn {
+            background: none;
+            border: none;
+            font-size: 1.2rem;
+            cursor: pointer;
+            color: #999;
+            padding: 4px 8px;
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+            transition: all 0.2s;
+        }
+
+        .minimize-btn:hover, .close-btn:hover {
+            background: #f0f0f0;
+            color: #333;
+        }
+
+        .send-btn {
+            padding: 10px 20px;
+            background: #333;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+
+        /* ─────────────────────────────────────────────────────────────── */
+        /* MOBILE RESPONSIVENESS */
+        /* ─────────────────────────────────────────────────────────────── */
+        .mobile-only {
+            display: none;
+        }
+
+        @media (max-width: 1024px) {
+            .sidebar {
+                display: none;
+            }
+            
+            .mobile-only {
+                display: block;
+            }
+            
+            .talk-button.mobile-only,
+            .plaintext-button.mobile-only {
+                position: fixed;
+                top: 8px;
+                width: calc(50% - 12px);
+                margin: 0;
+                padding: 8px 12px;
+                border: 1px solid var(--border-color);
+                border-radius: 4px;
+                background: #f9f9f0;
+                font-family: var(--font-sans);
+                font-size: 0.9rem;
+                cursor: pointer;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                z-index: 1001;
+                color: var(--text-color);
+            }
+            
+            .talk-button.mobile-only { 
+                left: 8px; 
+            }
+
+            .plaintext-button.mobile-only { 
+                right: 8px; 
+            }
+            
+            .talk-button.mobile-only:hover,
+            .plaintext-button.mobile-only:hover {
+                background: #ece8d3;
+            }
+            
+            .main-content {
+                margin-left: 0;
+                padding: 65px 20px 40px 20px;
+                max-width: 100%;
+            }
+        }
+
+        /* ─────────────────────────────────────────────────────────────── */
+        /* LOADING STATE */
+        /* ─────────────────────────────────────────────────────────────── */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 248, 0.95);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 3000;
+        }
+
+        .loading-spinner {
+            border: 2px solid #ccc;
+            border-top: 2px solid #333;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* ─────────────────────────────────────────────────────────────── */
+        /* MODAL WINDOWS */
+        /* ─────────────────────────────────────────────────────────────── */
+        .api-key-modal {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            box-shadow: var(--popup-shadow);
+            padding: 32px;
+            width: 400px;
+            max-width: 90vw;
+            z-index: 3001;
+            display: none;
+        }
+
+        .api-key-modal.visible {
+            display: block;
+        }
+
+        .api-key-modal h3 {
+            font-size: 1.2rem;
+            margin-bottom: 16px;
+            font-family: var(--font-sans);
+        }
+
+        .api-key-modal p {
+            color: #666;
+            margin-bottom: 20px;
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+
+        .api-key-modal input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            font-size: 0.9rem;
+            margin-bottom: 16px;
+            font-family: monospace;
+        }
+
+        .api-key-modal button {
+            padding: 8px 24px;
+            background: #333;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .api-key-modal button:hover {
+            background: #111;
+        }
+
+        #apiKeyModal {
+            z-index: 4000;  /* anything above 3001 */
+        }
+
+        /* ─────────────────────────────────────────────────────────────── */
+        /* CHAT INTERFACE */
+        /* ─────────────────────────────────────────────────────────────── */
+        .chat-modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            z-index: 2000;
+        }
+
+        .chat-modal-overlay.visible {
+            display: block;
+        }
+
+        .chat-modal {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 90%;
+            max-width: 700px;
+            height: 80vh;
+            background: white;
+            border-radius: 12px;
+            box-shadow: var(--popup-shadow);
+            display: flex;
+            flex-direction: column;
+            z-index: 2001;
+        }
+
+        .chat-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-family: var(--font-sans);
+        }
+
+        .chat-controls {
+            display: flex;
+            gap: 8px;
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            font-family: var(--font-sans);
+        }
+
+        .chat-message {
+            margin-bottom: 16px;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+
+        .chat-message.user {
+            background: #e3f2fd;
+            margin-left: 20%;
+        }
+
+        .chat-message.ai {
+            background: #f5f5f5;
+            margin-right: 20%;
+        }
+
+        .chat-input-container {
+            padding: 16px;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            gap: 8px;
+        }
+
+        .chat-input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            font-size: 0.9rem;
+            font-family: var(--font-sans);
+        }
+
+        .plaintext-summary {
+            margin: 24px 0;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- MOBILE NAVIGATION BUTTONS -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <button class="talk-button mobile-only" id="talkButtonMobile">AI Chat</button>
+    <button class="plaintext-button mobile-only" id="plaintextButtonMobile" onclick="showPlaintextModal()">Layman Summary</button>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- SIDEBAR NAVIGATION -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <div class="sidebar" id="sidebar">
+        <button class="talk-button" id="talkButton">AI Chat</button>
+        <button class="plaintext-button" id="plaintextButton" onclick="showPlaintextModal()">Layman Summary</button>
+        <button class="plaintext-button" id="downloadXmlBtn" style="display: none; background: #e8f4f8; margin-bottom: 12px;">Download XML</button>
+        
+        <h3 id="toc-title">Contents</h3>
+        <ul id="tocList"></ul>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- MAIN CONTENT AREA -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <main class="main-content" id="mainContent">
+        <div class="loading-overlay" id="loadingOverlay">
+            <div class="loading-spinner"></div>
+        </div>
+    </main>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- POPUP CONTAINER -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <div class="popup" id="popup">
+        <div class="popup-arrow"></div>
+        <div class="popup-content" id="popupContent"></div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- MODAL DIALOGS -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    
+    <!-- API Key Modal -->
+    <div class="api-key-modal" id="apiKeyModal">
+        <h3>Gemini API Key Required</h3>
+        <p>Please enter your Gemini API key to use the Q&A feature. Your key will only be stored for this session.</p>
+        <p style="font-size: 0.85rem;">Get a free key at: <a href="https://aistudio.google.com/app/apikey" target="_blank">aistudio.google.com</a></p>
+        <input type="password" id="apiKeyInput" placeholder="Enter your Gemini API key">
+        <button id="apiKeySubmit">Continue</button>
+    </div>
+
+    <!-- Upload Modal -->
+    <div class="api-key-modal" id="uploadModal" style="display: none;">
+        <h3>Upload Paper</h3>
+        <p>Drop a PDF file or LaTeX + BIB files to convert to structured format</p>
+        <input type="file" id="fileInput" accept=".pdf,.tex,.bib" multiple style="margin-bottom: 12px;">
+        <div id="uploadStatus" style="color: #666; font-size: 0.9rem; margin-bottom: 12px;"></div>
+        <button id="convertBtn" style="display: none;">Convert Paper</button>
+    </div>
+
+    <!-- Chat Modal -->
+    <div class="chat-modal-overlay" id="chatOverlay">
+        <div class="chat-modal">
+            <div class="chat-header">
+                <h3>Ask AI about this paper</h3>
+                <div class="chat-controls">
+                    <button class="close-btn" id="closeChat">×</button>
+                </div>
+            </div>
+            <div class="chat-messages" id="chatMessages"></div>
+            <div class="chat-input-container">
+                <input type="text" class="chat-input" id="chatInput" placeholder="Ask any question about this paper...">
+                <button class="send-btn" id="sendBtn">Ask</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- JAVASCRIPT APPLICATION -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <script>
+        // ─────────────────────────────────────────────────────────────── 
+        // GLOBAL STATE MANAGEMENT
+        // ───────────────────────────────────────────────────────────────
+        let expandedSections = new Set();
+        let sessionApiKey = '';
+        let footnoteCounter = 0;
+        let currentPaperXML = null;
+        let currentPaperText = '';
+        let chatHistory = [];
+        let usedUploadThisSession = false;
+
+        // ─────────────────────────────────────────────────────────────── 
+        // DOM ELEMENT REFERENCES
+        // ───────────────────────────────────────────────────────────────
+        const mainContent = document.getElementById('mainContent');
+        const tocList = document.getElementById('tocList');
+        const popup = document.getElementById('popup');
+        const popupContent = document.getElementById('popupContent');
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        const apiKeyModal = document.getElementById('apiKeyModal');
+        const apiKeyInput = document.getElementById('apiKeyInput');
+        const apiKeySubmit = document.getElementById('apiKeySubmit');
+        const talkButton = document.getElementById('talkButton');
+        const chatOverlay = document.getElementById('chatOverlay');
+        const chatMessages = document.getElementById('chatMessages');
+        const chatInput = document.getElementById('chatInput');
+        const sendBtn = document.getElementById('sendBtn');
+        const closeChat = document.getElementById('closeChat');
+
+        // ─────────────────────────────────────────────────────────────── 
+        // CONVERSION PROMPT
+        // ───────────────────────────────────────────────────────────────
+const CONVERSION_PROMPT = `Convert an academic research paper (from PDF or LaTeX source) into a structured XML document with the following rules. Transcribe the raw text of the paper EXACTLY, without correcting spelling and grammar, with the sole exception that you do not need to maintain line breaks (and hyphenations from line breaks) and other "pure formatting" aspects of the pdf. You do NOT need to transcribe a bibliography or works cited section, since you will be noting citations inline as they appear, or the 'thank you' notes if any on the first page. Export ONLY the xml, wrapped in <PAPER> </PAPER>. Place tables, figures, equations in the order they appear in the text, at the nearest paragraph break to where they appear in the paper.
+
+XML Structure Rules
+
+Metadata:
+
+Wrap the title in <TITLE>...</TITLE>.
+
+Wrap the author list in <AUTHORS>...</AUTHORS>. The author list should just be a comma-delimited set of names; no affiliations, emails, icon pointers or similar should be transcribed.
+
+Use <PUBLICATION_DATE>YYYY-MM-DD</PUBLICATION_DATE> if date is available.
+
+Use <ABSTRACT>...</ABSTRACT> if there is an abstract. Only include this if you are sure a given chunk of text is actually the abstract.
+
+Use <PLAINTEXT>...</PLAINTEXT> ALWAYS to give a VERY ACCURATE but New Yorker style interpretation of the most important results of the paper. It should be in the format: 1) What is the main question? 2) How do we answer it? 3) What do we find? 4) Why should we care? If the paper is particularly technical, consider this a Quanta magazine rather than a New Yorker magazine style of interpretation. Do NOT state those four questions - just write in a way that answers them. DO NOT say things 'the paper states' and 'the authors construct' - write it like John Brooks or John McPhee was describing the paper as clearly as possible, that a layman would understand (or if a very technical paper, that someone in the field who isn't is a specialist would understand). This should be 200-300 words, GOOD WRITING, and very interesting.
+
+Headings:
+
+Use <SECTION ref="sec_id">Section Title</SECTION> at the start of top-level sections.
+
+Use <SUBSECTION ref="subsec_id">Subsection Title</SUBSECTION> at the start of subsections.
+
+Use <SUBSUBSECTION ref="subsubsec_id">Subsubsection Title</SUBSUBSECTION> for sub-subsections.
+
+Text:
+
+Leave plain text unwrapped.  Lists, italics, etc. should be be converted to <li> <i> etc. with proper closure.
+
+Use paragraph breaks (\\n\\n) between paragraphs. Do not wrap in <P> or any block tag.
+
+Mathematics:
+
+ALWAYS wrap inline math in <MATH>...</MATH>. All math within this should be written in TeX. ALWAYS use \\lt, \\leq, \\rt, \\req for greater than or less than because otherwise it will break the XML rendering. Be sure to always write mathematics EXACTLY in latex format.
+
+Wrap display/full-line equations in <FULL_LINE_EQUATION ref="eq_id"> <MATH>...</MATH> </FULL_LINE_EQUATION>. Again, this should be written in TeX.
+
+Formal Content:
+
+Use semantic tags with ref attributes. These should began with EXAMPLE 3 or PROPOSITION 1 or similar if they are numbered in the text.
+
+<THEOREM ref="thm_id">...</THEOREM>
+
+<PROPOSITION ref="prop_id">...</THEOREM>
+
+<COROLLARY ref="cor_id">...</COROLLARY>
+
+<PROOF ref="proof_id">...</PROOF>
+
+<LEMMA ref="lemma_id">...</LEMMA>
+
+<DEFINITION ref="def_id">...</DEFINITION>
+
+<ASSUMPTION ref="assm_id">...</ASSUMPTION>
+
+<EXAMPLE ref="ex_id">...</EXAMPLE>
+
+Citations & Footnotes:
+
+<CITATION ref="cite_id" title="The Title of the Paper" authors="Author 1, Author 2, and Author 3" year="year" journal="Journal Name">Bryan et al. (2019)</CITATION>
+
+The internal part of this tag should be exactly what the inline citation appears in the paper as, e.g., (Bryan et al 1994), [Johnson 1987], Smith and Jones 1974, [3], etc.
+
+Use <FOOTNOTE ref="fn_id">...</FOOTNOTE>
+
+Do NOT include the superscript for a footnote when you are transcribing the document; instead, just give me the footnote text wrapped in this tag. Do NOT include <CITATION> or other tags within footnote; just give me the footnote text (even if is to a citation). You may include math within a footnote.
+
+Tables:
+<TABLE ref="tbl_id">
+  <thead>
+    <tr><th>Header1</th><th>Header2</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Row1Col1</td><td>Row1Col2</td></tr>
+  </tbody>
+</TABLE>
+
+Figures:
+
+<FIGURE ref="fig_id">
+  <CAPTION>Figure caption</CAPTION>
+  <IMG src="fig_id.png">
+</FIGURE>
+
+Figures should always be named fig_1.png, fig_2.png, etc., in line with the original paper.
+
+Appendices:
+
+Wrap appendix content in <APPENDIX ref="appendix_id">...</APPENDIX>
+
+Use standard HTML anchor format:
+
+See <a href="#thm1">Theorem 1</a> or from <a href="#sec_model">Section 2</a>. Make sure that any reference to a theorem or table or similar that can be pointed to is pointed to.
+
+Short Example Output
+<TITLE>Optimal Taxation in Incomplete Markets</TITLE>
+<AUTHORS>Jane Doe, John Smith</AUTHORS>
+<PUBLICATION_DATE>2022-06-01</PUBLICATION_DATE>
+
+We study optimal tax policy in incomplete markets with borrowing constraints.<FOOTNOTE ref="fn1">We thank seminar participants at MIT and Princeton.</FOOTNOTE> The problem is to figure out how consumers borrow, drawing on <CITATION ref="cite_1" title="Idiosyncratic Risk" authors="Aiyagari Rao" year="1994" journal="Quarterly Journal of Economics">Bryan et al. (2019)</CITATION> shows how precautionary savings affect wealth distribution.
+
+<SECTION ref="sec_model">Model</SECTION>
+Agents face idiosyncratic income risk and choose <MATH>c_t</MATH> and <MATH>a_{t+1}</MATH> to maximize utility:
+
+<FULL_LINE_EQUATION ref="eq1">
+  <MATH>u(c_t) + \\beta E_t[V(a_{t+1}, s_{t+1})]</MATH>
+</FULL_LINE_EQUATION>
+
+subject to a series of constraints.
+
+<ASSUMPTION ref="assm1">ASSUMPTION 1: Markets are incomplete and there is no insurance against income shocks.</ASSUMPTION>
+
+<THEOREM ref="thm1">THEOREM 1: The optimal tax rate is zero in steady state under conditions A–C.</THEOREM>
+<PROOF ref="proof1">Follows from envelope conditions and Euler equation under the Ramsey planner's problem.</PROOF>
+
+<TABLE ref="tbl1">
+  <thead>
+    <tr><th>Variable</th><th>Value</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><MATH>\\tau</MATH></td><td>0.15</td></tr>
+  </tbody>
+</TABLE>
+
+So now what one can see in <a href="#fig1">Figure 1</a> is that, as noted in <a href="#sec_model">Section 1</a>, we have no need to consider further issues. 
+
+<FIGURE ref="fig1">
+  <CAPTION>Welfare across tax regimes</CAPTION>
+  <IMG src="fig1_welfare.png" />
+</FIGURE> shows how precautionary savings affect wealth distribution.`;
+
+        // ─────────────────────────────────────────────────────────────── 
+        // API KEY MANAGEMENT
+        // ───────────────────────────────────────────────────────────────
+        async function ensureApiKey() {
+            if (sessionApiKey) return sessionApiKey;
+
+            try {
+                const res = await fetch('get-api-key.php');
+                if (!res.ok) throw new Error('Key fetch failed');
+
+                const data = await res.json();
+                if (data.apiKey) {
+                    sessionApiKey = data.apiKey.trim();
+                    return sessionApiKey;
+                }
+
+                throw new Error('API key not found in response');
+            } catch (e) {
+                console.warn('Could not fetch API key:', e.message);
+            }
+
+            // Fallback: prompt user
+            return new Promise((resolve) => {
+                apiKeyModal.classList.add('visible');
+
+                const submitHandler = () => {
+                    const key = apiKeyInput.value.trim();
+                    if (key) {
+                        sessionApiKey = key;
+                        apiKeyModal.classList.remove('visible');
+                        apiKeyInput.value = '';
+                        resolve(key);
+                    }
+                };
+
+                apiKeySubmit.onclick = submitHandler;
+                apiKeyInput.onkeypress = (e) => {
+                    if (e.key === 'Enter') submitHandler();
+                };
+            });
+        }
+
+        // ─────────────────────────────────────────────────────────────── 
+        // PAPER TEXT EXTRACTION
+        // ───────────────────────────────────────────────────────────────
+        function extractPaperText() {
+            const xml = currentPaperXML;
+            let text = '';
+            
+            const title = xml.querySelector('TITLE')?.textContent || '';
+            document.getElementById('toc-title').textContent = title;
+            const authors = xml.querySelector('AUTHORS')?.textContent || '';
+            const abstract = xml.querySelector('ABSTRACT')?.textContent || '';
+            
+            text += `Title: ${title}\nAuthors: ${authors}\n`;
+            if (abstract) text += `Abstract: ${abstract}\n\n`;
+            
+            const walker = document.createTreeWalker(
+                xml.documentElement,
+                NodeFilter.SHOW_TEXT,
+                null,
+                false
+            );
+            
+            let node;
+            while (node = walker.nextNode()) {
+                const content = node.textContent.trim();
+                if (content && !['TITLE', 'AUTHORS', 'ABSTRACT'].includes(node.parentNode.tagName)) {
+                    text += content + ' ';
+                }
+            }
+            
+            currentPaperText = text;
+        }
+
+        // ─────────────────────────────────────────────────────────────── 
+        // PAPER DATA LOADING
+        // ───────────────────────────────────────────────────────────────
+        async function loadPaperData() {
+            const params = new URLSearchParams(window.location.search);
+            let dataUrl = params.get('data');
+
+            // If a 'data' URL parameter exists, load the XML from there
+            if (dataUrl) {
+                try {
+                    const response = await fetch(dataUrl);
+                    if (!response.ok) throw new Error(`Failed to fetch paper data from ${dataUrl}`);
+                    let xmlText = await response.text();
+                    
+                    // Clean up potential XML issues before parsing
+                    xmlText = xmlText
+                        .replace(/&(?!(?:amp|lt|gt|quot|apos|#\d+|#x[\da-fA-F]+);)/g, '&amp;')
+                        .replace(/(<[^>]+>)|([^<]+)/g, (match, tag, text) => {
+                            if (tag) return tag;
+                            return text.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                        });
+                        
+                    window.generatedXML = xmlText;
+                    if (usedUploadThisSession) {
+                        document.getElementById('downloadXmlBtn').style.display = 'block';
+                    }
+
+                    try {
+                        currentPaperXML = new DOMParser().parseFromString(xmlText, 'application/xml');
+                        extractPaperText();
+                        loadingOverlay.style.display = 'none';
+                        renderPaperFromXML();
+                        buildTOCFromXML();
+                    } catch (e) {
+                        loadingOverlay.style.display = 'none';
+                        showXmlFallback(xmlText);
+                    }
+                } catch (error) {
+                    console.error('Error loading paper data from URL:', error);
+                    loadingOverlay.style.display = 'none';
+                    showXmlFallback(window.generatedXML || '');
+                }
+                return;
+            }
+
+            // --- If no 'data' URL, handle the file upload and conversion process ---
+            const uploadModal = document.getElementById('uploadModal');
+            const fileInput = document.getElementById('fileInput');
+            const convertBtn = document.getElementById('convertBtn');
+            const uploadStatus = document.getElementById('uploadStatus');
+
+            // Show the upload modal
+            uploadModal.style.display = 'block';
+            loadingOverlay.style.display = 'none';
+            
+            fileInput.addEventListener('change', (e) => {
+                const files = Array.from(e.target.files);
+                if (files.length > 0) {
+                    uploadStatus.innerHTML = `<strong>Selected:</strong> ${files.map(f => f.name).join(', ')}<br>Click "Convert Paper" to proceed.`;
+                    convertBtn.style.display = 'block';
+                } else {
+                    uploadStatus.textContent = '';
+                    convertBtn.style.display = 'none';
+                }
+            });
+            
+            convertBtn.addEventListener('click', async () => {
+                usedUploadThisSession = true;
+                if (!fileInput.files.length) {
+                    uploadStatus.textContent = 'Please select a file first.';
+                    return;
+                }
+
+                // Update UI to show processing state
+                uploadModal.style.display = 'none';
+                loadingOverlay.style.display = 'flex'; // Show spinner
+                convertBtn.disabled = true;
+
+                // Helper function to read a file as a base64 string
+                const fileToGenerativePart = async (file) => {
+                    const base64EncodedDataPromise = new Promise((resolve) => {
+                        const reader = new FileReader();
+                        reader.onloadend = () => resolve(reader.result.split(',')[1]);
+                        reader.readAsDataURL(file);
+                    });
+                    return {
+                        inlineData: {
+                            data: await base64EncodedDataPromise,
+                            mimeType: file.type
+                        },
+                    };
+                };
+
+                try {
+                    // 1. Get the API key using the existing secure method
+                    const apiKey = await ensureApiKey();
+                    
+                    // 2. Prepare the request for the Gemini API
+                    const files = Array.from(fileInput.files);
+                    const fileParts = await Promise.all(files.map(fileToGenerativePart));
+
+                    const requestBody = {
+                        contents: [{
+                            parts: [
+                                { text: CONVERSION_PROMPT }, 
+                                ...fileParts
+                            ]
+                        }],
+                        generationConfig: {
+                            temperature: 0.1,
+                            maxOutputTokens: 65000,
+                        }
+                    };
+
+                    // 3. Call the Gemini API
+                    console.log('🚀 Sending conversion request to Gemini 2.5 Pro...');
+                    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(requestBody)
+                    });
+
+                    console.log('⏳ Request sent—waiting for Gemini\'s response...');
+                    if (!res.ok) {
+                        const errorDetails = await res.json();
+                        throw new Error(`Gemini API Error: ${errorDetails.error?.message || res.statusText}`);
+                    }
+
+                    const responseData = await res.json();
+                    console.log('✅ Received response from Gemini conversion');
+                    
+                    // 4. Extract and clean the XML from the response
+                    let xmlText = responseData.candidates[0].content.parts[0].text;
+                    // Strip bold/italic/etc. tags entirely
+                    xmlText = xmlText.replace(/<\/?(?:b|i|em|strong|ul|ol|li)>/gi, '');
+                    // Remove markdown code block fences if the model adds them
+                    xmlText = xmlText.trim().replace(/^```xml\n/, '').replace(/\n```$/, '');
+
+                    // Sanitize before parsing (same as the data-url path)
+                    xmlText = xmlText
+                        .replace(/&(?!(?:amp|lt|gt|quot|apos|#\d+|#x[\da-fA-F]+);)/g, '&amp;')
+                        .replace(/(<[^>]+>)|([^<]+)/g, (match, tag, text) => {
+                            if (tag) return tag;
+                            return text.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                        });
+
+                    window.generatedXML = xmlText; // Store for potential download
+                    if (usedUploadThisSession) {
+                        document.getElementById('downloadXmlBtn').style.display = 'block';
+                    }
+
+                    // 5. Parse and render the generated XML
+                    currentPaperXML = new DOMParser().parseFromString(xmlText, "application/xml");
+                    
+                    extractPaperText();
+                    renderPaperFromXML();
+                    buildTOCFromXML();
+
+                } catch (err) {
+                    console.error('❌ Conversion failed:', err);
+                    // still allow download + show raw if any XML was produced
+                    showXmlFallback(window.generatedXML || '');
+                } finally {
+                    // 6. Reset UI
+                    loadingOverlay.style.display = 'none';
+                    convertBtn.disabled = false;
+                }
+            });
+        }
+
+        // ─────────────────────────────────────────────────────────────── 
+        // XML CONTENT TRANSFORMATION HELPERS
+        // ───────────────────────────────────────────────────────────────
+        function transformXMLContent(xmlStr) {
+            /* 1. inline / display math ------------------------------------------ */
+            xmlStr = xmlStr.replace(
+                /<FULL_LINE_EQUATION[^>]*ref="([^"]+)"[^>]*>\s*(?:<MATH>([\s\S]*?)<\/MATH>|([\s\S]*?))\s*<\/FULL_LINE_EQUATION>/g,
+                (_, eqId, innerWithTag, innerRaw) => {
+                    const tex = (innerWithTag || innerRaw).trim();
+                    return `<div class="equation-display" id="${eqId}">$$${tex}$$</div>`;
+                }
+            );
+
+            xmlStr = xmlStr.replace(
+                /<MATH>([\s\S]*?)<\/MATH>/g,
+                (_, tex) => `\\(${tex}\\)`
+            );
+
+            xmlStr = xmlStr.replace(/<\/?(?:b|i|em|strong|ul|ol|li)>/gi, '');
+
+            /* 2. foot‑notes (as popups, not a list) ----------------------------- */
+            xmlStr = xmlStr.replace(/<FOOTNOTE[^>]*>([\s\S]*?)<\/FOOTNOTE>/g,
+                (_, note) => {
+                    footnoteCounter++;
+                    // Remove CITATION tags and all their attributes, keep only inner text
+                    let cleanNote = note.replace(/<CITATION[^>]*?>([\s\S]*?)<\/CITATION>/g, '$1');
+                    const processedNote = cleanNote.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                    return `<sup class="footnote-ref" data-footnote-content="${encodeURIComponent(processedNote)}">${footnoteCounter}</sup>`;
+                });
+
+            /* 3. citations ------------------------------------------------------- */
+            xmlStr = xmlStr.replace(
+                /<CITATION([^>]*)>([\s\S]*?)<\/CITATION>/g,
+                (_, attrStr, visibleText) => {
+                    const attrs = {};
+                    attrStr.replace(/(\w+)="([^"]*)"/g, (_, key, val) => {
+                        attrs[key.toLowerCase()] = val;
+                    });
+
+                    const popupHtml = `
+                        <div class="citation-popup">
+                            ${attrs.authors ? `<div class="citation-authors">${attrs.authors}</div>` : ''}
+                            ${attrs.title ? `<div class="citation-title">${attrs.title}</div>` : ''}
+                            ${(attrs.journal || attrs.year)
+                                ? `<div class="citation-link">${[attrs.journal, attrs.year].filter(Boolean).join(', ')}</div>`
+                                : ''}
+                        </div>
+                    `.trim();
+
+                    return `<span class="citation" data-details="${encodeURIComponent(popupHtml)}">${visibleText}</span>`;
+                }
+            );
+
+            // props
+            xmlStr = xmlStr.replace(/<(THEOREM|PROOF|PROPOSITION|LEMMA|DEFINITION|ASSUMPTION|REMARK|COROLLARY|EXAMPLE)([^>]*)>([\s\S]*?)<\/\1>/g,
+                (_, tagName, attrs, content) => {
+                    const ref = attrs.match(/ref="([^"]+)"/)?.[1] || '';
+                    const className = tagName.toLowerCase();
+                    return `<div class="${className}" ${ref ? `id="${ref}"` : ''}>
+                        ${content}
+                    </div>`;
+                });
+
+            // figures
+            xmlStr = xmlStr.replace(/<FIGURE([^>]*)>([\s\S]*?)<\/FIGURE>/gi,
+                (_, attrs, content) => {
+                    const ref = attrs.match(/ref="([^"]+)"/)?.[1] || '';
+                    const cap = (content.match(/<CAPTION>([\s\S]*?)<\/CAPTION>/i)?.[1] || '').trim();
+                    let img = content.match(/<IMG[^>]*src="([^"]+)"[^>]*\/?>/i)?.[1] || '';
+
+                    // Prepend base path from ?data= if needed
+                    const dataParam = new URLSearchParams(window.location.search).get('data');
+                    if (img && dataParam && !/^https?:\/\//i.test(img)) {
+                        const basePath = dataParam.substring(0, dataParam.lastIndexOf('/') + 1);
+                        img = basePath + img;
+                    }
+
+                    return `<div class="figure" ${ref ? `id="${ref}"` : ''}>
+                        <img src="${img}" alt="${cap}">
+                        ${cap ? `<div class="figure-caption">${cap}</div>` : ''}
+                    </div>`;
+                });
+
+            // tables
+            xmlStr = xmlStr.replace(/<TABLE([^>]*)>([\s\S]*?)<\/TABLE>/g,
+                (_, attrs, content) => {
+                    const ref = attrs.match(/ref="([^"]+)"/)?.[1] || '';
+                    let caption = '';
+                    content = content.replace(/<CAPTION>([\s\S]*?)<\/CAPTION>/g, (_, cap) => {
+                        caption = cap;
+                        return '';
+                    });
+                    
+                    // Convert XML table structure to HTML
+                    let htmlTable = content
+                        .replace(/<thead>/gi, '<thead>')
+                        .replace(/<\/thead>/gi, '</thead>')
+                        .replace(/<tbody>/gi, '<tbody>')
+                        .replace(/<\/tbody>/gi, '</tbody>')
+                        .replace(/<tr>/gi, '<tr>')
+                        .replace(/<\/tr>/gi, '</tr>')
+                        .replace(/<th>/gi, '<th>')
+                        .replace(/<\/th>/gi, '</th>')
+                        .replace(/<td>/gi, '<td>')
+                        .replace(/<\/td>/gi, '</td>');
+                    
+                    return `<div class="table-container" ${ref ? `id="${ref}"` : ''}>
+                        <table>${htmlTable}</table>
+                        ${caption ? `<div class="table-caption">${caption}</div>` : ''}
+                    </div>`;
+                });
+
+            // crossrefs
+            xmlStr = xmlStr.replace(/<XREF[^>]*ref="([^"]+)"[^>]*>([\s\S]*?)<\/XREF>/g,
+                (_, ref, text) => `<a href="#${ref}" class="xref">${text}</a>`);
+
+            return xmlStr;
+        }
+
+        // ─────────────────────────────────────────────────────────────── 
+        // XML PAPER RENDERING
+        // ───────────────────────────────────────────────────────────────
+        function renderPaperFromXML() {
+            const xml = currentPaperXML;
+
+            // 1. Render the paper's header
+            const title = xml.querySelector('TITLE').textContent;
+            const authors = xml.querySelector('AUTHORS').textContent;
+            const pubDate = xml.querySelector('PUBLICATION_DATE')?.textContent || '';
+            const pdfUrl = xml.querySelector('PDF')?.textContent || '';
+
+            let finalHtml = `
+                <div class="paper-header">
+                    <h1 class="paper-title">${title}</h1>
+                    <div class="paper-authors">${authors}</div>
+                    <div class="paper-metadata">
+                        <span>${pubDate}</span>
+                        ${pdfUrl ? `<a href="${pdfUrl}" style="text-decoration: none;" target="_blank">[PDF]</a>` : ''}
+                    </div>
+                </div>
+            `;
+
+            const plaintext = xml.querySelector('PLAINTEXT')?.textContent;
+            if (plaintext) {
+                window.plaintextContent = plaintext;
+            }
+
+            const abstract = xml.querySelector('ABSTRACT')?.textContent;
+            if (abstract) {
+                finalHtml += `
+                    <div class="abstract">
+                        <div class="abstract-label">Abstract</div>
+                        ${abstract}
+                    </div>
+                `;
+            }
+
+            // 2. Set up parsing with paragraph buffer
+            let paragraphBuffer = '';
+            const INLINE_TAGS = ['CITATION', 'MATH', 'FOOTNOTE', 'XREF'];
+            let sectionStack = [];
+
+            function flushParagraphBuffer() {
+                if (paragraphBuffer.trim()) {
+                    finalHtml += `<p>${transformXMLContent(paragraphBuffer)}</p>`;
+                }
+                paragraphBuffer = '';
+            }
+
+            let currentNode = xml.querySelector('ABSTRACT')?.nextSibling || 
+                          xml.querySelector('PLAINTEXT')?.nextSibling || 
+                          (xml.querySelector('PUBLICATION_DATE') || xml.querySelector('AUTHORS')).nextSibling;
+
+            while (currentNode) {
+                if (currentNode.nodeType === 1 && 
+                    (currentNode.tagName === 'PLAINTEXT' || currentNode.tagName === 'ABSTRACT')) {
+                    currentNode = currentNode.nextSibling;
+                    continue;
+                }
+                
+                const isText = currentNode.nodeType === 3;
+                const isInline = currentNode.nodeType === 1 && (
+                    INLINE_TAGS.includes(currentNode.tagName) ||
+                    (currentNode.tagName === 'a' && currentNode.getAttribute('href')?.startsWith('#'))
+                );
+                
+                if (isText || isInline) {
+                    const serialized = new XMLSerializer().serializeToString(currentNode);
+                    // Break on blank lines
+                    serialized.split(/\n\s*\n/).forEach((chunk, i, arr) => {
+                        paragraphBuffer += chunk;
+                        if (i < arr.length - 1) flushParagraphBuffer();
+                    });
+                } else if (currentNode.nodeType === 1) {
+                    // First flush any buffered paragraph content
+                    flushParagraphBuffer();
+                    
+                    const tagName = currentNode.tagName;
+                    
+                    if (tagName === 'SECTION' || tagName === 'SUBSECTION' || tagName === 'SUBSUBSECTION') {
+                        // Close sections at same or lower level
+                        while (sectionStack.length > 0 && 
+                               getSectionLevel(sectionStack[sectionStack.length - 1]) >= getSectionLevel(tagName)) {
+                            finalHtml += `</div></div>`;
+                            sectionStack.pop();
+                        }
+                        
+                        const secId = currentNode.getAttribute('ref') || `sec_${Date.now()}`;
+                        const secTitle = currentNode.textContent.trim();
+                        const level = getSectionLevel(tagName);
+                        
+                        finalHtml += `
+                            <div id="${secId}" class="section section-level-${level}" data-section-id="${secId}">
+                                <div class="section-header" data-section-id="${secId}">
+                                    <span class="section-toggle">▼</span>
+                                    <h${level + 1}>${secTitle}</h${level + 1}>
+                                </div>
+                                <div class="section-content" id="content-${secId}">
+                        `;
+                        
+                        sectionStack.push(tagName);
+                    } else {
+                        // Handle other block elements without breaking them up
+                        const blockContent = new XMLSerializer().serializeToString(currentNode);
+                        finalHtml += transformXMLContent(blockContent);
+                    }
+                }
+                currentNode = currentNode.nextSibling;
+            }
+            
+            // Flush any remaining buffer and close sections
+            flushParagraphBuffer();
+            while (sectionStack.length > 0) {
+                finalHtml += `</div></div>`;
+                sectionStack.pop();
+            }
+
+            mainContent.innerHTML = finalHtml;
+            attachSectionListeners();
+            attachCitationListeners();
+            attachFootnoteListeners();
+            if (window.MathJax?.typesetPromise) MathJax.typesetPromise();
+        }
+
+        function getSectionLevel(tagName) {
+            switch(tagName) {
+                case 'SECTION': return 1;
+                case 'SUBSECTION': return 2;
+                case 'SUBSUBSECTION': return 3;
+                default: return 0;
+            }
+        }
+
+        // ─────────────────────────────────────────────────────────────── 
+        // TABLE OF CONTENTS GENERATION
+        // ───────────────────────────────────────────────────────────────
+        function buildTOCFromXML() {
+            let tocHTML = '';
+            // Correctly get the title from the SECTION tag's text content.
+            currentPaperXML.querySelectorAll('SECTION').forEach(sec => {
+                const id = sec.getAttribute('ref');
+                const title = sec.textContent.trim(); // The only change needed for the TOC
+                if (id && title) {
+                    tocHTML += `
+                        <li><a href="#" data-section-target="${id}">
+                            ${title}
+                        </a></li>
+                    `;
+                }
+            });
+            tocList.innerHTML = tocHTML;
+            tocList.querySelectorAll('a').forEach(link => {
+                link.addEventListener('click', e => {
+                    e.preventDefault();
+                    const target = document.querySelector(`[data-section-id="${e.target.dataset.sectionTarget}"]`);
+                    target?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
+            });
+        }
+
+        // ─────────────────────────────────────────────────────────────── 
+        // INTERACTIVE SECTION HANDLING
+        // ───────────────────────────────────────────────────────────────
+        function attachSectionListeners() {
+            document.querySelectorAll('.section-header').forEach(header => {
+                header.addEventListener('click', () => {
+                    const sectionId = header.dataset.sectionId;
+                    const toggle = header.querySelector('.section-toggle');
+                    const content = document.getElementById(`content-${sectionId}`);
+                    
+                    if (content.classList.contains('collapsed')) {
+                        content.classList.remove('collapsed');
+                        toggle.textContent = '▼';
+                        expandedSections.add(sectionId);
+                    } else {
+                        content.classList.add('collapsed');
+                        toggle.textContent = '▶';
+                        expandedSections.delete(sectionId);
+                    }
+                });
+            });
+        }
+
+        // ─────────────────────────────────────────────────────────────── 
+        // CITATION AND FOOTNOTE INTERACTION
+        // ───────────────────────────────────────────────────────────────
+        function attachCitationListeners() {
+            document.querySelectorAll('.citation').forEach(cite => {
+                const show = e => { showCitationPopup(cite); popup.dataset.sticky = 'true'; };
+                const hide = () => { hidePopup(); popup.dataset.sticky = 'false'; };
+
+                cite.addEventListener('click', e => { e.preventDefault(); show(); });
+                cite.addEventListener('mouseenter', show);
+                cite.addEventListener('mouseleave', hide);
+            });
+        }
+
+        function attachFootnoteListeners() {
+            document.querySelectorAll('.footnote-ref').forEach(ref => {
+                const html = decodeURIComponent(ref.dataset.footnoteContent || '');
+                const show = () => { showFootnotePopup(ref, html); popup.dataset.sticky = 'true'; };
+                const hide = () => { hidePopup(); popup.dataset.sticky = 'false'; };
+
+                ref.addEventListener('click', e => { e.preventDefault(); show(); });
+                ref.addEventListener('mouseenter', show);
+                ref.addEventListener('mouseleave', hide);
+            });
+        }
+
+        // ─────────────────────────────────────────────────────────────── 
+        // POPUP MANAGEMENT
+        // ───────────────────────────────────────────────────────────────
+        function showCitationPopup(element) {
+            const html = decodeURIComponent(element.dataset.details || '');
+            popupContent.innerHTML = html;
+            popup.classList.add('visible');
+            positionPopup(popup, element.getBoundingClientRect());
+        }
+
+        function showFootnotePopup(element, html) {
+            popupContent.innerHTML = html;
+            popup.classList.add('visible');
+            positionPopup(popup, element.getBoundingClientRect());
+            if (window.MathJax?.typesetPromise) MathJax.typesetPromise([popupContent]);
+        }
+
+        function positionPopup(popup, targetRect) {
+            const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+            const viewportHeight = window.innerHeight;
+            
+            // Position horizontally centered on target
+            const left = targetRect.left;
+            popup.style.left = left + 'px';
+            popup.style.maxWidth = '400px';
+            
+            // Try positioning below the target first
+            let top = targetRect.bottom + scrollTop + 5;
+            popup.style.top = top + 'px';
+            popup.style.display = 'block'; // Temporarily show to get dimensions
+            
+            // Check if it goes off bottom of viewport
+            const popupRect = popup.getBoundingClientRect();
+            if (popupRect.bottom > viewportHeight - 20) {
+                // Position above instead
+                top = targetRect.top + scrollTop - popupRect.height - 5;
+                popup.style.top = top + 'px';
+            }
+        }
+
+        function hidePopup() {
+            popup.classList.remove('visible');
+            popup.style.display = 'none';
+        }
+
+        // ─────────────────────────────────────────────────────────────── 
+        // PLAINTEXT SUMMARY MODAL
+        // ───────────────────────────────────────────────────────────────
+        function showPlaintextModal() {
+            const modal = document.createElement('div');
+            modal.style.cssText = 'position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 30px; border-radius: 8px; box-shadow: var(--popup-shadow); max-width: 700px; width: 90%; max-height: 80vh; overflow-y: auto; z-index: 2002;';
+            
+            // Process plaintext to preserve paragraphs and math
+            let processedText = window.plaintextContent
+                .split('\n\n')  // Split by double newlines for paragraphs
+                .map(para => `<p style="margin-bottom: 1em; line-height: 1.7;">${para.trim()}</p>`)
+                .join('');
+            
+            // Convert any LaTeX math (assuming $ or $ delimiters in plaintext)
+            processedText = processedText.replace(/\$\$(.*?)\$\$/g, '$$$$1$$');
+            processedText = processedText.replace(/\$(.*?)\$/g, '\\($1\\)');
+            
+            modal.innerHTML = `
+                <div style="font-size: 1.1rem; line-height: 1.8; font-family: var(--font-serif);">
+                    ${processedText}
+                </div>
+                <button onclick="this.parentElement.remove(); document.getElementById('modalOverlay').remove();" 
+                        style="margin-top: 24px; padding: 10px 20px; background: #333; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 1rem;">
+                    Close
+                </button>
+            `;
+            
+            const overlay = document.createElement('div');
+            overlay.id = 'modalOverlay';
+            overlay.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 2001;';
+            overlay.onclick = () => { modal.remove(); overlay.remove(); };
+            
+            document.body.appendChild(overlay);
+            document.body.appendChild(modal);
+            
+            // Render any math in the modal
+            if (window.MathJax?.typesetPromise) {
+                MathJax.typesetPromise([modal]);
+            }
+        }
+
+        // ─────────────────────────────────────────────────────────────── 
+        // ERROR HANDLING AND FALLBACKS
+        // ───────────────────────────────────────────────────────────────
+        function showXmlFallback(xmlText) {
+            // show download button if we have XML
+            if (xmlText) {
+                window.generatedXML = xmlText;
+                const btn = document.getElementById('downloadXmlBtn');
+                if (btn) btn.style.display = 'block';
+            }
+            // show as much as we can
+            const escaped = (xmlText || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+            mainContent.innerHTML = `
+                <div style="padding:24px;">
+                    <strong>Rendered view had errors.</strong> You can still download the raw XML below. 
+                    <pre style="white-space:pre-wrap;word-wrap:break-word;margin-top:12px;border:1px solid var(--border-color);padding:12px;max-height:50vh;overflow:auto;">${escaped}</pre>
+                </div>`;
+        }
+
+        // ─────────────────────────────────────────────────────────────── 
+        // AI CHAT FUNCTIONALITY
+        // ───────────────────────────────────────────────────────────────
+        async function askAboutPaper(query, apiKey, history = []) {
+            if (!currentPaperText) extractPaperText();
+            
+            let conversationContext = '';
+            if (history.length > 0) {
+                conversationContext = '\n\nPrevious conversation:\n' + 
+                    history.map(h => `${h.role}: ${h.content}`).join('\n') + '\n\n';
+            }
+            
+            const prompt = `Based on the following academic paper, please answer this question: "${query}". The prior conversation context is: ${conversationContext}
+            Paper: ${currentPaperText}
+            
+            Please provide a clear, concise answer based ONLY on the paper's content. If there is a single most relevant sentence from the paper that supports your answer (most cases), include it exactly as: <REFERENCE>One VERBATIM SENTENCE REPRODUCED EXACTLY from the paper.</REFERENCE>. Do NOT answer questions unrelated to the paper - just respond, I think that's unrelated to the paper, so I'm afraid I don't have an answer. Math should be written in LaTeX with $...$. Most answers will be a single paragraph; use up to 3 if absolutely necessary to answer the user question. Do not use Markdown in your response. Do NOT say 'based on the paper' or similar: the user knows this conversation is about a paper.`;
+
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{ parts: [{ text: prompt }] }],
+                    generationConfig: { 
+                        temperature: 0.3,
+                        maxOutputTokens: 8000
+                    }
+                })
+            });
+            
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error?.message || 'API request failed');
+            }
+            
+            const data = await response.json();
+            return data.candidates[0].content.parts[0].text;
+        }
+
+        async function sendMessage() {
+            const query = chatInput.value.trim();
+            if (!query) return;
+            
+            chatHistory.push({ role: 'User', content: query });
+            chatMessages.innerHTML += `<div class="chat-message user">${query}</div>`;
+            chatInput.value = '';
+            chatMessages.innerHTML += `<div class="chat-message ai">Thinking...</div>`;
+            
+            try {
+                const apiKey = await ensureApiKey();
+                let response = await askAboutPaper(query, apiKey, chatHistory);
+                
+                response = response.replace(/(?<!\$)\$(\S(?:[^$]*?\S)?)\$(?!\$)/g, '\\($1\\)');
+                
+                // Check for reference
+                const refMatch = response.match(/<REFERENCE>(.*?)<\/REFERENCE>/);
+                if (refMatch) {
+                    const refText = refMatch[1];
+                    const pageText = document.body.innerText;
+                    
+                    if (pageText.includes(refText)) {
+                        response = response.replace(/<REFERENCE>.*?<\/REFERENCE>/, 
+                            `<span class="ref-link" onclick="highlightReference('${refText.replace(/'/g, "\\'")}')" style="cursor: pointer; color: var(--link-color); text-decoration: none; border-bottom: 1px dotted var(--link-color);">↗ View source</span>`);
+                    } else {
+                        response = response.replace(/<REFERENCE>.*?<\/REFERENCE>/, '');
+                    }
+                }
+                
+                chatHistory.push({ role: 'Assistant', content: response });
+                chatMessages.lastElementChild.innerHTML = response;
+                
+                if (window.MathJax?.typesetPromise) {
+                    MathJax.typesetPromise([chatMessages.lastElementChild]);
+                }
+            } catch (error) {
+                chatMessages.lastElementChild.innerHTML = `Error: ${error.message}`;
+            }
+            
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function highlightReference(text) {
+            chatOverlay.classList.remove('visible');
+            
+            const walker = document.createTreeWalker(
+                mainContent,
+                NodeFilter.SHOW_TEXT,
+                null,
+                false
+            );
+            
+            let node;
+            while (node = walker.nextNode()) {
+                if (node.textContent.includes(text)) {
+                    const parent = node.parentNode;
+                    const textBefore = node.textContent.substring(0, node.textContent.indexOf(text));
+                    const textAfter = node.textContent.substring(node.textContent.indexOf(text) + text.length);
+                    
+                    // Create highlighted span just for the sentence
+                    const before = document.createTextNode(textBefore);
+                    const highlighted = document.createElement('span');
+                    highlighted.style.cssText = 'border-bottom: 3px solid yellow; transition: border-color 3s;';
+                    highlighted.textContent = text;
+                    const after = document.createTextNode(textAfter);
+                    
+                    parent.replaceChild(after, node);
+                    parent.insertBefore(highlighted, after);
+                    parent.insertBefore(before, highlighted);
+                    
+                    highlighted.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    
+                    setTimeout(() => {
+                        highlighted.style.borderColor = 'transparent';
+                    }, 3000);
+                    break;
+                }
+            }
+        }
+
+        // ─────────────────────────────────────────────────────────────── 
+        // EVENT LISTENERS SETUP
+        // ───────────────────────────────────────────────────────────────
+        
+        // Figure zoom interaction
+        document.addEventListener('mousemove', e => {
+            const fig = e.target.closest('.figure');
+            if (fig && fig.querySelector('img')) {
+                const img = fig.querySelector('img');
+                const rect = fig.getBoundingClientRect();
+                const x = ((e.clientX - rect.left) / rect.width) * 100;
+                const y = ((e.clientY - rect.top) / rect.height) * 100;
+                img.style.transformOrigin = `${x}% ${y}%`;
+            }
+        });
+
+        // Chat functionality
+        sendBtn.addEventListener('click', sendMessage);
+        chatInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendMessage();
+        });
+
+        // Global click handler for popups
+        document.addEventListener('click', (e) => {
+            // If popup is visible and click is not on popup or citation/footnote
+            if (popup.classList.contains('visible')) {
+                if (!popup.contains(e.target) && 
+                    !e.target.classList.contains('citation') && 
+                    !e.target.classList.contains('footnote-ref')) {
+                    hidePopup();
+                    popup.dataset.sticky = 'false';
+                }
+            }
+        });
+
+        // Chat modal controls
+        talkButton.addEventListener('click', () => {
+            chatOverlay.classList.add('visible');
+        });
+
+        const talkButtonMobile = document.getElementById('talkButtonMobile');
+        if (talkButtonMobile) {
+            talkButtonMobile.addEventListener('click', () => {
+                chatOverlay.classList.add('visible');
+            });
+        }
+
+        closeChat.addEventListener('click', () => {
+            chatOverlay.classList.remove('visible');
+        });
+
+        chatOverlay.addEventListener('click', (e) => {
+            if (e.target === chatOverlay) {
+                chatOverlay.classList.remove('visible');
+            }
+        });
+
+        // Download XML functionality
+        document.getElementById('downloadXmlBtn').addEventListener('click', () => {
+            if (window.generatedXML) {
+                const blob = new Blob([window.generatedXML], { type: 'text/xml' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'paper.xml';
+                a.click();
+                URL.revokeObjectURL(url);
+            }
+        });
+
+        // Window resize handler
+        window.addEventListener('resize', () => {
+            if (popup.classList.contains('visible')) {
+                hidePopup();
+            }
+        });
+
+        // ─────────────────────────────────────────────────────────────── 
+        // APPLICATION INITIALIZATION
+        // ───────────────────────────────────────────────────────────────
+        document.addEventListener('DOMContentLoaded', () => {
+            loadPaperData();
+        });
+    </script>
+</body>
+</html>
