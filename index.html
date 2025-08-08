@@ -1015,44 +1015,75 @@ So now what one can see in <a href="#fig1">Figure 1</a> is that, as noted in <a 
         // ─────────────────────────────────────────────────────────────── 
         // API KEY MANAGEMENT
         // ───────────────────────────────────────────────────────────────
-        async function ensureApiKey() {
-            if (sessionApiKey) return sessionApiKey;
 
-            try {
-                const res = await fetch('get-api-key.php');
-                if (!res.ok) throw new Error('Key fetch failed');
+async function ensureLocalKey() {
+  if (sessionApiKey) return sessionApiKey;
 
-                const data = await res.json();
-                if (data.apiKey) {
-                    sessionApiKey = data.apiKey.trim();
-                    return sessionApiKey;
-                }
+  // Only prompt on localhost/127.0.0.1
+  const host = location.hostname;
+  const isLocal = host === 'localhost' || host === '127.0.0.1';
 
-                throw new Error('API key not found in response');
-            } catch (e) {
-                console.warn('Could not fetch API key:', e.message);
-            }
+  if (!isLocal) {
+    throw new Error('Proxy required (no key exposed in production).');
+  }
 
-            // Fallback: prompt user
-            return new Promise((resolve) => {
-                apiKeyModal.classList.add('visible');
+  return new Promise((resolve) => {
+    apiKeyModal.classList.add('visible');
+    const submit = () => {
+      const key = apiKeyInput.value.trim();
+      if (key) {
+        sessionApiKey = key;
+        apiKeyModal.classList.remove('visible');
+        apiKeyInput.value = '';
+        resolve(key);
+      }
+    };
+    apiKeySubmit.onclick = submit;
+    apiKeyInput.onkeypress = (e) => { if (e.key === 'Enter') submit(); };
+  });
+}
 
-                const submitHandler = () => {
-                    const key = apiKeyInput.value.trim();
-                    if (key) {
-                        sessionApiKey = key;
-                        apiKeyModal.classList.remove('visible');
-                        apiKeyInput.value = '';
-                        resolve(key);
-                    }
-                };
+// ADD this helper near the top of your script:
+async function postGemini(payload) {
+  // 1) Try server-side proxy (keeps key private in production)
+  try {
+    const res = await fetch('gemini-proxy.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (res.ok) return await res.json();
 
-                apiKeySubmit.onclick = submitHandler;
-                apiKeyInput.onkeypress = (e) => {
-                    if (e.key === 'Enter') submitHandler();
-                };
-            });
-        }
+    // If proxy returns non-JSON error, surface it
+    const raw = await res.text();
+    try { throw new Error(JSON.parse(raw).error || raw); } catch { throw new Error(raw); }
+  } catch (err) {
+    // 2) If we're local, fall back to direct Google call using a prompted key
+    const host = location.hostname;
+    const isLocal = host === 'localhost' || host === '127.0.0.1';
+    if (!isLocal) throw err;
+
+    const key = await ensureLocalKey();
+    const model = payload.model || 'gemini-2.5-flash';
+    const direct = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(key)}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...payload, model: undefined }) // Google URL carries the model
+      }
+    );
+
+    const raw = await direct.text();
+    if (!direct.ok) {
+      try { throw new Error(JSON.parse(raw).error?.message || raw); }
+      catch { throw new Error(raw); }
+    }
+    try { return JSON.parse(raw); }
+    catch { throw new Error('Non-JSON from Gemini:\n' + raw.slice(0, 300)); }
+  }
+}
+
 
         // ─────────────────────────────────────────────────────────────── 
         // PAPER TEXT EXTRACTION
@@ -1181,41 +1212,16 @@ So now what one can see in <a href="#fig1">Figure 1</a> is that, as noted in <a 
                 };
 
                 try {
-                    // 1. Get the API key using the existing secure method
-                    const apiKey = await ensureApiKey();
                     
                     // 2. Prepare the request for the Gemini API
                     const files = Array.from(fileInput.files);
                     const fileParts = await Promise.all(files.map(fileToGenerativePart));
 
-                    const requestBody = {
-                        contents: [{
-                            parts: [
-                                { text: CONVERSION_PROMPT }, 
-                                ...fileParts
-                            ]
-                        }],
-                        generationConfig: {
-                            temperature: 0.1,
-                            maxOutputTokens: 65000,
-                        }
-                    };
-
-                    // 3. Call the Gemini API
-                    console.log('🚀 Sending conversion request to Gemini 2.5 Pro...');
-                    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(requestBody)
-                    });
-
-                    console.log('⏳ Request sent—waiting for Gemini\'s response...');
-                    if (!res.ok) {
-                        const errorDetails = await res.json();
-                        throw new Error(`Gemini API Error: ${errorDetails.error?.message || res.statusText}`);
-                    }
-
-                    const responseData = await res.json();
+const responseData = await postGemini({
+  model: 'gemini-2.5-pro',
+  contents: [{ parts: [{ text: CONVERSION_PROMPT }, ...fileParts] }],
+  generationConfig: { temperature: 0.1, maxOutputTokens: 65000 }
+});
                     console.log('✅ Received response from Gemini conversion');
                     
                     // 4. Extract and clean the XML from the response
@@ -1694,7 +1700,7 @@ So now what one can see in <a href="#fig1">Figure 1</a> is that, as noted in <a 
         // ─────────────────────────────────────────────────────────────── 
         // AI CHAT FUNCTIONALITY
         // ───────────────────────────────────────────────────────────────
-        async function askAboutPaper(query, apiKey, history = []) {
+        async function askAboutPaper(query, history = []) {
             if (!currentPaperText) extractPaperText();
             
             let conversationContext = '';
@@ -1708,24 +1714,12 @@ So now what one can see in <a href="#fig1">Figure 1</a> is that, as noted in <a 
             
             Please provide a clear, concise answer based ONLY on the paper's content. If there is a single most relevant sentence from the paper that supports your answer (most cases), include it exactly as: <REFERENCE>One VERBATIM SENTENCE REPRODUCED EXACTLY from the paper.</REFERENCE>. Do NOT answer questions unrelated to the paper - just respond, I think that's unrelated to the paper, so I'm afraid I don't have an answer. Math should be written in LaTeX with $...$. Most answers will be a single paragraph; use up to 3 if absolutely necessary to answer the user question. Do not use Markdown in your response. Do NOT say 'based on the paper' or similar: the user knows this conversation is about a paper.`;
 
-            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    contents: [{ parts: [{ text: prompt }] }],
-                    generationConfig: { 
-                        temperature: 0.3,
-                        maxOutputTokens: 8000
-                    }
-                })
-            });
-            
-            if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.error?.message || 'API request failed');
-            }
-            
-            const data = await response.json();
+const data = await postGemini({
+  model: 'gemini-2.5-flash',
+  contents: [{ parts: [{ text: prompt }] }],
+  generationConfig: { temperature: 0.3, maxOutputTokens: 8000 }
+});
+return data.candidates[0].content.parts[0].text;
             return data.candidates[0].content.parts[0].text;
         }
 
@@ -1739,8 +1733,7 @@ So now what one can see in <a href="#fig1">Figure 1</a> is that, as noted in <a 
             chatMessages.innerHTML += `<div class="chat-message ai">Thinking...</div>`;
             
             try {
-                const apiKey = await ensureApiKey();
-                let response = await askAboutPaper(query, apiKey, chatHistory);
+                let response = await askAboutPaper(query, chatHistory);
                 
                 response = response.replace(/(?<!\$)\$(\S(?:[^$]*?\S)?)\$(?!\$)/g, '\\($1\\)');
                 
