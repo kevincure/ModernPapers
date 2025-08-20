@@ -5,9 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Academic Paper Viewer</title>
     
-    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- ------------------------------------------------------------------- -->
     <!-- MATHJAX CONFIGURATION -->
-    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- ------------------------------------------------------------------- -->
     <script>
         window.MathJax = {
             tex: {
@@ -26,14 +26,16 @@
         };
     </script>
     <script id="MathJax-script" defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <!-- Additional libs for index2 integration -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 
-    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- ------------------------------------------------------------------- -->
     <!-- STYLES -->
-    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- ------------------------------------------------------------------- -->
     <style>
-        /* ─────────────────────────────────────────────────────────────── */
+        /* --------------------------------------------------------------- */
         /* CORE DESIGN SYSTEM */
-        /* ─────────────────────────────────────────────────────────────── */
+        /* --------------------------------------------------------------- */
         :root {
             --font-serif: 'Georgia', 'Times New Roman', serif;
             --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -69,9 +71,9 @@
             margin: 0 0 1em;
         }
 
-        /* ─────────────────────────────────────────────────────────────── */
+        /* --------------------------------------------------------------- */
         /* SIDEBAR NAVIGATION */
-        /* ─────────────────────────────────────────────────────────────── */
+        /* --------------------------------------------------------------- */
         .sidebar {
             position: fixed;
             left: 0;
@@ -121,9 +123,9 @@
             font-size: 0.85rem;
         }
 
-        /* ─────────────────────────────────────────────────────────────── */
+        /* --------------------------------------------------------------- */
         /* MAIN CONTENT AREA */
-        /* ─────────────────────────────────────────────────────────────── */
+        /* --------------------------------------------------------------- */
         .main-content {
             margin-left: 280px;
             flex: 1;
@@ -175,9 +177,9 @@
             font-style: italic;
         }
 
-        /* ─────────────────────────────────────────────────────────────── */
+        /* --------------------------------------------------------------- */
         /* SECTIONS AND COLLAPSIBLE CONTENT */
-        /* ─────────────────────────────────────────────────────────────── */
+        /* --------------------------------------------------------------- */
         .section {
             margin-bottom: 32px;
             position: relative;
@@ -244,24 +246,10 @@
             margin: 0;
         }
 
-        .section-summary {
-            background: var(--section-collapsed-bg);
-            padding: 12px 16px;
-            border-radius: 4px;
-            font-style: italic;
-            font-size: 0.95rem;
-            color: #666;
-            margin-bottom: 16px;
-            display: none;
-        }
 
-        .section-summary.visible {
-            display: block;
-        }
-
-        /* ─────────────────────────────────────────────────────────────── */
+        /* --------------------------------------------------------------- */
         /* ACADEMIC CONTENT ELEMENTS */
-        /* ─────────────────────────────────────────────────────────────── */
+        /* --------------------------------------------------------------- */
         .theorem, .proof, .proposition, .lemma, .definition, .assumption, .remark, .corollary, .example {
             margin: 20px 0;
             padding: 16px;
@@ -289,9 +277,9 @@
             font-style: italic;
         }
 
-        /* ─────────────────────────────────────────────────────────────── */
+        /* --------------------------------------------------------------- */
         /* MATHEMATICAL EQUATIONS */
-        /* ─────────────────────────────────────────────────────────────── */
+        /* --------------------------------------------------------------- */
         .equation-display {
             display: flex;
             justify-content: center;
@@ -302,9 +290,9 @@
             margin: 1em auto !important;
         }
 
-        /* ─────────────────────────────────────────────────────────────── */
+        /* --------------------------------------------------------------- */
         /* FIGURES AND IMAGES */
-        /* ─────────────────────────────────────────────────────────────── */
+        /* --------------------------------------------------------------- */
         .figure {
             overflow: hidden;
             position: relative;
@@ -312,6 +300,8 @@
         }
 
         .figure img {
+            display: block; /* ensure caption starts on a new line */
+            margin: 0 auto;
             max-width: 100%;
             max-height: 75vh; /* ≤ 75% of viewport height */
             transition: transform 0.2s ease;
@@ -334,9 +324,9 @@
             margin-right: auto;
         }
 
-        /* ─────────────────────────────────────────────────────────────── */
+        /* --------------------------------------------------------------- */
         /* TABLES */
-        /* ─────────────────────────────────────────────────────────────── */
+        /* --------------------------------------------------------------- */
         .table-container {
             margin: 24px 0;
             overflow-x: auto;
@@ -367,9 +357,9 @@
             font-style: italic;
         }
 
-        /* ─────────────────────────────────────────────────────────────── */
+        /* --------------------------------------------------------------- */
         /* LIST STYLES */
-        /* ─────────────────────────────────────────────────────────────── */
+        /* --------------------------------------------------------------- */
         ul.bullet-list, ol.numbered-list {
             margin: 1em 0;
             padding-left: 2em;
@@ -379,9 +369,9 @@
             margin-bottom: 0.5em;
         }
 
-        /* ─────────────────────────────────────────────────────────────── */
+        /* --------------------------------------------------------------- */
         /* CITATIONS AND REFERENCES */
-        /* ─────────────────────────────────────────────────────────────── */
+        /* --------------------------------------------------------------- */
         .citation, .xref {
             display: inline;
             text-decoration: none;
@@ -418,9 +408,9 @@
             text-decoration: underline;
         }
 
-        /* ─────────────────────────────────────────────────────────────── */
+        /* --------------------------------------------------------------- */
         /* POPUP WINDOWS */
-        /* ─────────────────────────────────────────────────────────────── */
+        /* --------------------------------------------------------------- */
         .popup {  
             display: none;
             position: absolute;
@@ -461,9 +451,9 @@
             font-size: 0.85rem;
         }
 
-        /* ─────────────────────────────────────────────────────────────── */
+        /* --------------------------------------------------------------- */
         /* BUTTONS AND CONTROLS */
-        /* ─────────────────────────────────────────────────────────────── */
+        /* --------------------------------------------------------------- */
         .talk-button {
             width: 100%;
             padding: 10px;
@@ -498,7 +488,7 @@
             background: #ece8d3;
         }
 
-        .minimize-btn, .close-btn {
+        .close-btn {
             background: none;
             border: none;
             font-size: 1.2rem;
@@ -514,7 +504,7 @@
             transition: all 0.2s;
         }
 
-        .minimize-btn:hover, .close-btn:hover {
+        .close-btn:hover {
             background: #f0f0f0;
             color: #333;
         }
@@ -529,9 +519,9 @@
             font-size: 0.9rem;
         }
 
-        /* ─────────────────────────────────────────────────────────────── */
+        /* --------------------------------------------------------------- */
         /* MOBILE RESPONSIVENESS */
-        /* ─────────────────────────────────────────────────────────────── */
+        /* --------------------------------------------------------------- */
         .mobile-only {
             display: none;
         }
@@ -583,9 +573,9 @@
             }
         }
 
-        /* ─────────────────────────────────────────────────────────────── */
+        /* --------------------------------------------------------------- */
         /* LOADING STATE */
-        /* ─────────────────────────────────────────────────────────────── */
+        /* --------------------------------------------------------------- */
         .loading-overlay {
             position: fixed;
             top: 0;
@@ -613,9 +603,17 @@
             100% { transform: rotate(360deg); }
         }
 
-        /* ─────────────────────────────────────────────────────────────── */
+        .loading-note {
+            margin-top: 12px;
+            font-family: var(--font-sans);
+            font-size: 0.9rem;
+            color: #666;
+            text-align: center;
+        }
+
+        /* --------------------------------------------------------------- */
         /* MODAL WINDOWS */
-        /* ─────────────────────────────────────────────────────────────── */
+        /* --------------------------------------------------------------- */
         .api-key-modal {
             position: fixed;
             top: 50%;
@@ -678,9 +676,9 @@
             z-index: 4000;  /* anything above 3001 */
         }
 
-        /* ─────────────────────────────────────────────────────────────── */
+        /* --------------------------------------------------------------- */
         /* CHAT INTERFACE */
-        /* ─────────────────────────────────────────────────────────────── */
+        /* --------------------------------------------------------------- */
         .chat-modal-overlay {
             position: fixed;
             top: 0;
@@ -770,48 +768,80 @@
         .plaintext-summary {
             margin: 24px 0;
         }
+        /* Buttons */
+        .btn { background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); color:#fff; border:none; padding:8px 14px; border-radius:8px; cursor:pointer; font-size:0.95rem; }
+        .btn.secondary { background:#6c757d; }
+        .btn:disabled { opacity:.5; cursor:not-allowed; }
+        /* Figure Extraction Modal styling (inspired by ExtractFigures) */
+        .fx-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 3500; display: none; align-items: center; justify-content: center; }
+        .fx-modal { background: #fff; width: min(1200px, 95vw); max-height: 92vh; border-radius: 16px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); display:flex; flex-direction: column; overflow: hidden; }
+        .fx-header { display:flex; align-items:center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid #e0e0e0; }
+        .fx-header h2 { margin: 0; color: #1e3c72; font-size: 1.2rem; font-family: var(--font-sans); }
+        .fx-actions { display:flex; gap: 8px; }
+        .fx-body { padding: 16px 20px; overflow: auto; }
+        .settings { background: #f8f9fa; border-radius: 10px; padding: 12px; margin: 10px 0 12px; }
+        .settings-title { font-weight: 600; margin-bottom: 8px; font-family: var(--font-sans); }
+        .setting-row { display:flex; align-items:center; gap: 8px; margin-bottom: 8px; }
+        .setting-label { flex:1; color:#555; font-family: var(--font-sans); }
+        .setting-input { width: 100px; padding: 5px 10px; border:1px solid #ddd; border-radius:6px; }
+        .progress { display: none; margin-top: 10px; background: #f0f0f0; border-radius: 10px; overflow: hidden; height: 8px; }
+        .progress-bar { background: linear-gradient(90deg, #1e3c72 0%, #2a5298 100%); height: 100%; width: 0%; transition: width 0.3s ease; }
+        .status { margin-top: 10px; color: #666; font-family: var(--font-sans); }
+        .error { display:none; color: #e74c3c; margin-top: 10px; padding: 10px; background:#ffe6e6; border-radius:8px; font-family: var(--font-sans); }
+        .results { display:none; margin-top: 14px; }
+        .results-header { display:flex; justify-content: space-between; align-items:center; margin-bottom: 10px; gap: 8px; flex-wrap: wrap; }
+        .results-title { font-size: 1.1rem; font-weight: 600; }
+        .action-buttons { display:flex; gap: 8px; flex-wrap: wrap; }
+        .image-grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+        .image-item { background:#fff; border-radius:10px; padding: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.08); position:relative; }
+        .image-item.selected { box-shadow: 0 0 0 3px rgba(30,60,114,0.5); }
+        .image-checkbox { position:absolute; top:8px; right:8px; width:20px; height:20px; cursor:pointer; }
+        .image-preview { width:100%; height:200px; object-fit:contain; background:#f8f8f8; border-radius:5px; margin-bottom: 8px; cursor: pointer; }
+        .figure-title { font-weight: 600; color: #1e3c72; margin-bottom: 6px; font-family: var(--font-sans); }
+        .image-info { font-size: 0.9rem; color: #666; margin-bottom: 6px; font-family: var(--font-sans); }
+        .filename-input { width:100%; padding:6px; border:1px solid #ddd; border-radius:6px; margin-top:6px; font-size:0.9rem; font-family: var(--font-sans); }
     </style>
 </head>
 
 <body>
-    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- ------------------------------------------------------------------- -->
     <!-- MOBILE NAVIGATION BUTTONS -->
-    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- ------------------------------------------------------------------- -->
     <button class="talk-button mobile-only" id="talkButtonMobile">AI Chat</button>
     <button class="plaintext-button mobile-only" id="plaintextButtonMobile" onclick="showPlaintextModal()">Layman Summary</button>
 
-    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- ------------------------------------------------------------------- -->
     <!-- SIDEBAR NAVIGATION -->
-    <!-- ═══════════════════════════════════════════════════════════════════ -->
-    <div class="sidebar" id="sidebar">
+    <!-- ------------------------------------------------------------------- -->
+    <div class="sidebar" id="sidebar" style="display:none;">
         <button class="talk-button" id="talkButton">AI Chat</button>
         <button class="plaintext-button" id="plaintextButton" onclick="showPlaintextModal()">Layman Summary</button>
-        <button class="plaintext-button" id="downloadXmlBtn" style="display: none; background: #e8f4f8; margin-bottom: 12px;">Download XML</button>
+        <button class="plaintext-button" id="downloadXmlBtn" style="display: none; background: #e8f4f8; margin-bottom: 12px;">Download XML + Images</button>
         
         <h3 id="toc-title">Contents</h3>
         <ul id="tocList"></ul>
     </div>
 
-    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- ------------------------------------------------------------------- -->
     <!-- MAIN CONTENT AREA -->
-    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- ------------------------------------------------------------------- -->
     <main class="main-content" id="mainContent">
         <div class="loading-overlay" id="loadingOverlay">
             <div class="loading-spinner"></div>
+            <div class="loading-note">Processing | can take a few minutes for long papers.</div>
         </div>
     </main>
 
-    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- ------------------------------------------------------------------- -->
     <!-- POPUP CONTAINER -->
-    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- ------------------------------------------------------------------- -->
     <div class="popup" id="popup">
-        <div class="popup-arrow"></div>
         <div class="popup-content" id="popupContent"></div>
     </div>
 
-    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- ------------------------------------------------------------------- -->
     <!-- MODAL DIALOGS -->
-    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- ------------------------------------------------------------------- -->
     
     <!-- API Key Modal -->
     <div class="api-key-modal" id="apiKeyModal">
@@ -825,8 +855,8 @@
     <!-- Upload Modal -->
     <div class="api-key-modal" id="uploadModal" style="display: none;">
         <h3>Upload Paper</h3>
-        <p>Drop a PDF file or LaTeX + BIB files to convert to structured format</p>
-        <input type="file" id="fileInput" accept=".pdf,.tex,.bib" multiple style="margin-bottom: 12px;">
+        <p>Drop a PDF/PPTX or LaTeX + BIB files. We'll extract/confirm figures, then convert to structured XML.</p>
+        <input type="file" id="fileInput" accept=".pdf,.pptx,.tex,.bib" multiple style="margin-bottom: 12px;">
         <div id="uploadStatus" style="color: #666; font-size: 0.9rem; margin-bottom: 12px;"></div>
         <button id="convertBtn" style="display: none;">Convert Paper</button>
     </div>
@@ -837,7 +867,7 @@
             <div class="chat-header">
                 <h3>Ask AI about this paper</h3>
                 <div class="chat-controls">
-                    <button class="close-btn" id="closeChat">×</button>
+                    <button class="close-btn" id="closeChat">&times;</button>
                 </div>
             </div>
             <div class="chat-messages" id="chatMessages"></div>
@@ -848,13 +878,44 @@
         </div>
     </div>
 
-    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- Figure Review Modal (full-screen) -->
+    <div class="fx-overlay" id="fxOverlay" style="display:none;">
+      <div class="fx-modal">
+        <div class="fx-header">
+          <h2>Review and Select Figures</h2>
+          <div class="fx-actions">
+            <button class="btn secondary" id="fx-cancel">Cancel</button>
+            <button class="btn" id="fx-done">Prepare XML</button>
+          </div>
+        </div>
+        <div class="fx-body">
+          <div class="progress" id="fx-progress" style="display:none;">
+            <div class="progress-bar" id="fx-progressBar"></div>
+          </div>
+          <div class="status" id="fx-status"></div>
+          <div class="error" id="fx-error" style="display:none;"></div>
+          <div class="results" id="fx-results" style="display:none;">
+            <div class="results-header">
+              <div class="results-title" id="fx-resultsTitle">Extracted Figures</div>
+              <div class="action-buttons">
+                <button class="btn secondary" id="fx-selectAll">Select All</button>
+                <button class="btn secondary" id="fx-selectNone">Deselect All</button>
+                <button class="btn" id="fx-combine" disabled title="Select two figures from the same page">Combine Selected</button>
+              </div>
+            </div>
+            <div class="image-grid" id="fx-imageGrid"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ------------------------------------------------------------------- -->
     <!-- JAVASCRIPT APPLICATION -->
-    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- ------------------------------------------------------------------- -->
     <script>
-        // ─────────────────────────────────────────────────────────────── 
+        // --------------------------------------------------------------- 
         // GLOBAL STATE MANAGEMENT
-        // ───────────────────────────────────────────────────────────────
+        // ---------------------------------------------------------------
         let expandedSections = new Set();
         let sessionApiKey = '';
         let footnoteCounter = 0;
@@ -863,9 +924,9 @@
         let chatHistory = [];
         let usedUploadThisSession = false;
 
-        // ─────────────────────────────────────────────────────────────── 
+        // --------------------------------------------------------------- 
         // DOM ELEMENT REFERENCES
-        // ───────────────────────────────────────────────────────────────
+        // ---------------------------------------------------------------
         const mainContent = document.getElementById('mainContent');
         const tocList = document.getElementById('tocList');
         const popup = document.getElementById('popup');
@@ -881,10 +942,575 @@
         const sendBtn = document.getElementById('sendBtn');
         const closeChat = document.getElementById('closeChat');
 
-        // ─────────────────────────────────────────────────────────────── 
+        // --------------------------------------------------------------- 
+        // INTEGRATED FIGURE EXTRACTION (from ExtractFigures)
+        // ---------------------------------------------------------------
+        let extractedFigures = [];
+        let figureBlobMap = {};
+        const fxOverlay = document.getElementById('fxOverlay');
+        const fx = {
+            status: document.getElementById('fx-status'),
+            progress: document.getElementById('fx-progress'),
+            progressBar: document.getElementById('fx-progressBar'),
+            error: document.getElementById('fx-error'),
+            results: document.getElementById('fx-results'),
+            resultsTitle: document.getElementById('fx-resultsTitle'),
+            imageGrid: document.getElementById('fx-imageGrid'),
+            selectAll: document.getElementById('fx-selectAll'),
+            selectNone: document.getElementById('fx-selectNone'),
+            combine: document.getElementById('fx-combine'),
+        };
+
+        // pdf.js dynamic loader and worker configuration
+        async function ensurePdfjsLibLoaded() {
+            if (window.pdfjsLib) return;
+            await new Promise((resolve, reject) => {
+                const primary = document.createElement('script');
+                primary.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.min.js';
+                primary.onload = resolve;
+                primary.onerror = () => {
+                    const fallback = document.createElement('script');
+                    fallback.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+                    fallback.onload = resolve;
+                    fallback.onerror = reject;
+                    document.head.appendChild(fallback);
+                };
+                document.head.appendChild(primary);
+            });
+        }
+        function configurePdfjsWorker() {
+            if (!window.pdfjsLib) return;
+            const version = (pdfjsLib.version || '').toString();
+            const isV4 = version.startsWith('4.');
+            const workerSrc = isV4
+                ? 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.worker.min.js'
+                : 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+            pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc;
+        }
+
+        // Helpers
+        function baseLabelFromTitle(title='') {
+          const m = /\b(?:Fig(?:ure)?\.?)\s*([A-Za-z]?\d+[A-Za-z0-9]*)/i.exec(title);
+          return m ? m[1].toUpperCase() : '';
+        }
+        function uniquifyFilename(name) {
+          const used = new Set(extractedFigures.map(f => (f.filename || '').toLowerCase()));
+          let stem = name.replace(/\.png$/i,''); let n = 1; let cand = stem + '.png';
+          while (used.has(cand.toLowerCase())) cand = `${stem}-${++n}.png`;
+          return cand;
+        }
+        function suggestFilename(title, pageNum) {
+          const label = baseLabelFromTitle(title);
+          return uniquifyFilename(`${label ? `fig-${label}` : `fig-${pageNum}`}.png`);
+        }
+        function updateFxProgress(pct){ fx.progress.style.display='block'; fx.progressBar.style.width = `${pct}%`; }
+        function fxStatus(msg){ fx.status.textContent = msg; }
+        function fxError(msg){ fx.error.textContent = msg; fx.error.style.display='block'; setTimeout(()=>fx.error.style.display='none', 5000); }
+        function resetFigureUI(){ extractedFigures = []; fx.imageGrid.innerHTML=''; fx.results.style.display='none'; fx.progress.style.display='none'; fx.status.textContent=''; }
+
+        // Matrix + geometry helpers from ExtractFigures
+        function multiplyMatrices(m1, m2) {
+            return [
+                m1[0] * m2[0] + m1[2] * m2[1],
+                m1[1] * m2[0] + m1[3] * m2[1],
+                m1[0] * m2[2] + m1[2] * m2[3],
+                m1[1] * m2[2] + m1[3] * m2[3],
+                m1[0] * m2[4] + m1[2] * m2[5] + m1[4],
+                m1[1] * m2[4] + m1[3] * m2[5] + m1[5]
+            ];
+        }
+        function applyToPoint(m, x, y) { return { x: m[0]*x + m[2]*y + m[4], y: m[1]*x + m[3]*y + m[5] }; }
+        function computeTextBoxesInRenderSpace(textContent, renderViewport) {
+            const boxes = [];
+            for (const item of textContent.items) {
+                if (!item || !item.transform) continue;
+                const M = multiplyMatrices(renderViewport.transform, item.transform);
+                const a = applyToPoint(M, 0, 0);
+                const b = applyToPoint(M, item.width || 0, 0);
+                const c = applyToPoint(M, 0, 1);
+                const minX = Math.min(a.x, b.x, c.x);
+                const minY = Math.min(a.y, b.y, c.y);
+                const maxX = Math.max(a.x, b.x, c.x);
+                const maxY = Math.max(a.y, b.y, c.y);
+                const w = Math.max(1, Math.round(maxX - minX));
+                const h = Math.max(1, Math.round(maxY - minY));
+                boxes.push({ x: Math.round(minX), y: Math.round(minY), w, h });
+            }
+            return boxes;
+        }
+        function boxesOverlap(a, b) {
+            const ix = Math.max(0, Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x));
+            const iy = Math.max(0, Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y));
+            return ix > 0 && iy > 0 ? ix * iy : 0;
+        }
+        function horizontalOverlapRatio(a, b) {
+            const ix = Math.max(0, Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x));
+            return ix / Math.min(a.w, b.w);
+        }
+        function verticalOverlapRatio(a, b) {
+            const iy = Math.max(0, Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y));
+            return iy / Math.min(a.h, b.h);
+        }
+        function rectBetween(a, b) {
+            if (a.x + a.w <= b.x || b.x + b.w <= a.x) {
+                const left = a.x + a.w <= b.x ? a : b;
+                const right = left === a ? b : a;
+                const y = Math.max(a.y, b.y);
+                const y2 = Math.min(a.y + a.h, b.y + b.h);
+                return { x: left.x + left.w, y, w: Math.max(0, right.x - (left.x + left.w)), h: Math.max(0, y2 - y) };
+            }
+            if (a.y + a.h <= b.y || b.y + b.h <= a.y) {
+                const top = a.y + a.h <= b.y ? a : b;
+                const bottom = top === a ? b : a;
+                const x = Math.max(a.x, b.x);
+                const x2 = Math.min(a.x + a.w, b.x + b.w);
+                return { x, y: top.y + top.h, w: Math.max(0, x2 - x), h: Math.max(0, bottom.y - (top.y + top.h)) };
+            }
+            return { x: 0, y: 0, w: 0, h: 0 };
+        }
+        function textCoverage(rect, textBoxes) {
+            if (!rect || rect.w <= 0 || rect.h <= 0) return 0;
+            const area = rect.w * rect.h;
+            let covered = 0;
+            for (const t of textBoxes) {
+                const ix = Math.max(0, Math.min(rect.x + rect.w, t.x + t.w) - Math.max(rect.x, t.x));
+                const iy = Math.max(0, Math.min(rect.y + rect.h, t.y + t.h) - Math.max(rect.y, t.y));
+                covered += ix * iy;
+            }
+            return covered / Math.max(1, area);
+        }
+        function mergeImageBoxes(boxes, textBoxes = []) {
+            const merged = boxes.slice();
+            let changed = true;
+            while (changed) {
+                changed = false;
+                for (let i = 0; i < merged.length; i++) {
+                    for (let j = i + 1; j < merged.length; j++) {
+                        const a = merged[i], b = merged[j];
+                        const vOverlap = verticalOverlapRatio(a, b);
+                        const hOverlap = horizontalOverlapRatio(a, b);
+                        const gapX = Math.max(0, Math.max(a.x, b.x) - Math.min(a.x + a.w, b.x + b.w));
+                        const gapY = Math.max(0, Math.max(a.y, b.y) - Math.min(a.y + a.h, b.y + b.h));
+                        const smallDim = Math.min(Math.min(a.w, a.h), Math.min(b.w, b.h));
+                        const nearHoriz = gapX < Math.max(12, smallDim * 0.12);
+                        const nearVert  = gapY < Math.max(12, smallDim * 0.12);
+                        const interArea = boxesOverlap(a, b);
+                        const smallerArea = Math.min(a.w * a.h, b.w * b.h);
+                        const significantIntersection = interArea / Math.max(1, smallerArea) > 0.06;
+                        const gapRect = rectBetween(a, b);
+                        const hasText = textCoverage(gapRect, textBoxes) > 0.15;
+                        const horizontallyAligned = vOverlap > 0.35 && (hOverlap > 0.1 || nearHoriz);
+                        const verticallyAligned   = hOverlap > 0.35 && (vOverlap > 0.1 || nearVert);
+                        if ((horizontallyAligned || verticallyAligned || significantIntersection) && !hasText) {
+                            const nx = Math.min(a.x, b.x), ny = Math.min(a.y, b.y);
+                            const nx2 = Math.max(a.x + a.w, b.x + b.w);
+                            const ny2 = Math.max(a.y + a.h, b.y + b.h);
+                            merged[i] = { x: nx, y: ny, w: nx2 - nx, h: ny2 - ny };
+                            merged.splice(j, 1);
+                            changed = true;
+                            break;
+                        }
+                    }
+                    if (changed) break;
+                }
+            }
+            return merged.map(b => {
+                const padX = Math.round(b.w * 0.01) + 2;
+                const padY = Math.round(b.h * 0.005) + 1;
+                return { x: Math.max(0, b.x - padX), y: Math.max(0, b.y - padY), w: b.w + padX * 2, h: b.h + padY * 2 };
+            });
+        }
+        function shrinkCropToAvoidText(crop, textBoxes) {
+            const { x, y, w, h } = crop;
+            let top = y, bottom = y + h; const left = x, right = x + w;
+            const horizOverlap = (bx) => Math.max(0, Math.min(right, bx.x + bx.w) - Math.max(left, bx.x)) / Math.max(1, w);
+            const topBandY = y + Math.round(h * 0.10);
+            const bottomBandY = y + Math.round(h * 0.90);
+            let topMax = top, bottomMin = bottom; let topOverlapWidth = 0, topBoxCount = 0, bottomOverlapWidth = 0, bottomBoxCount = 0;
+            for (const b of textBoxes) {
+                const overlap = horizOverlap(b);
+                if (overlap < 0.8) continue;
+                const bTop = b.y, bBottom = b.y + b.h;
+                if (bBottom <= topBandY) { topMax = Math.max(topMax, bBottom); topOverlapWidth += (Math.min(right, b.x + b.w) - Math.max(left, b.x)); topBoxCount++; }
+                if (bTop >= bottomBandY) { bottomMin = Math.min(bottomMin, bTop); bottomOverlapWidth += (Math.min(right, b.x + b.w) - Math.max(left, b.x)); bottomBoxCount++; }
+            }
+            const maxTrim = Math.round(h * 0.10);
+            const margin = Math.max(1, Math.round(Math.min(w, h) * 0.005));
+            if (topBoxCount >= 2 || topOverlapWidth > w * 0.6) { const proposed = Math.min(maxTrim, Math.max(0, (topMax + margin) - top)); top += proposed; }
+            if (bottomBoxCount >= 2 || bottomOverlapWidth > w * 0.6) { const proposed = Math.min(maxTrim, Math.max(0, bottom - (bottomMin - margin))); bottom -= proposed; }
+            if (bottom <= top + 1) return { x: left, y: top, w: Math.max(1, right - left), h: 1 };
+            return { x: left, y: top, w: right - left, h: bottom - top };
+        }
+
+        function displayFxResults() {
+            if (extractedFigures.length === 0) { fxStatus('No figures found that meet the specified criteria.'); return; }
+            fx.resultsTitle.textContent = `Extracted Figures (${extractedFigures.length})`;
+            fx.results.style.display = 'block';
+            fx.imageGrid.innerHTML = '';
+            extractedFigures.forEach((fig, index) => {
+                const item = document.createElement('div');
+                item.className = 'image-item' + (fig.selected ? ' selected' : '');
+                item.dataset.index = index;
+                item.innerHTML = `
+                  <input type="checkbox" class="image-checkbox" ${fig.selected ? 'checked' : ''}>
+                  <div class="figure-title">${fig.title || 'Figure'}</div>
+                  <img src="${fig.url}" alt="Figure ${index + 1}" class="image-preview">
+                  <div class="image-info">${fig.page ? `Page: ${fig.page} • ` : ''}${fig.width}×${fig.height}px</div>
+                  <input class="filename-input" value="${fig.filename}">
+                  ${fig.caption ? `<div class="caption">${fig.caption}</div>` : ''}
+                `;
+                fx.imageGrid.appendChild(item);
+            });
+            updateCombineButtonState();
+        }
+
+        function attachFxListeners() {
+            if (!fx._listenersAttached) {
+                fx.selectAll.addEventListener('click', () => toggleFxSelection(true));
+                fx.selectNone.addEventListener('click', () => toggleFxSelection(false));
+                fx.combine.addEventListener('click', () => smartCombineSelected());
+                document.getElementById('fx-cancel').addEventListener('click', () => { fxOverlay.style.display = 'none'; });
+                document.getElementById('fx-done').addEventListener('click', () => {
+                    fxOverlay.style.display = 'none';
+                    const btn = document.getElementById('convertBtn');
+                    if (btn && !btn.disabled) btn.click();
+                });
+                fx.imageGrid.addEventListener('click', (e) => {
+                    const item = e.target.closest('.image-item');
+                    if (!item) return;
+                    if (e.target.matches('.filename-input')) { e.stopPropagation(); return; }
+                    const index = parseInt(item.dataset.index, 10);
+                    const checkbox = item.querySelector('.image-checkbox');
+                    if (e.target !== checkbox) { checkbox.checked = !checkbox.checked; }
+                    if (extractedFigures[index]) {
+                        extractedFigures[index].selected = checkbox.checked;
+                        item.classList.toggle('selected', checkbox.checked);
+                        updateCombineButtonState();
+                    }
+                });
+                fx.imageGrid.addEventListener('input', (e) => {
+                    if (!e.target.matches('.filename-input')) return;
+                    const idx = parseInt(e.target.closest('.image-item').dataset.index, 10);
+                    extractedFigures[idx].filename = e.target.value.trim();
+                });
+                fx.imageGrid.addEventListener('blur', (e) => {
+                    if (!e.target.matches('.filename-input')) return;
+                    let v = e.target.value.trim();
+                    if (!/\.png$/i.test(v)) v += '.png';
+                    e.target.value = v;
+                    const idx = parseInt(e.target.closest('.image-item').dataset.index, 10);
+                    extractedFigures[idx].filename = v;
+                }, true);
+                fx._listenersAttached = true;
+            }
+        }
+        function updateCombineButtonState() {
+            const sel = extractedFigures.filter(f => f.selected);
+            const ok = sel.length === 2 && sel[0].page === sel[1].page;
+            if (fx.combine) fx.combine.disabled = !ok;
+            if (fx.combine) fx.combine.title = ok ? 'Combine the two selected figures' : 'Select two figures from the same page';
+        }
+        function toggleFxSelection(selected) {
+            document.querySelectorAll('#fx-imageGrid .image-item').forEach(item => {
+                const index = parseInt(item.dataset.index, 10);
+                if (extractedFigures[index]) {
+                    extractedFigures[index].selected = selected;
+                    item.classList.toggle('selected', selected);
+                    item.querySelector('.image-checkbox').checked = selected;
+                }
+            });
+        }
+
+        // combine two selected (auto orientation, only same-page)
+        function loadImage(url){ return new Promise(r=>{ const i=new Image(); i.onload=()=>r(i); i.src=url; }); }
+        async function smartCombineSelected() {
+          const selIdxs = [];
+          extractedFigures.forEach((f,i)=>f.selected && selIdxs.push(i));
+          if (selIdxs.length !== 2) { fxError('Select exactly two figures.'); return; }
+          const [i1,i2] = selIdxs;
+          const A = extractedFigures[i1], B = extractedFigures[i2];
+          if (A.page !== B.page) { fxError('Please select two figures from the same page.'); return; }
+          const [imgA, imgB] = await Promise.all([loadImage(A.url), loadImage(B.url)]);
+          // Heuristic: decide orientation based on bbox positions if available
+          let orientation = 'horizontal';
+          if (A.bbox && B.bbox) {
+            const acx = A.bbox.x + A.bbox.w/2, acy = A.bbox.y + A.bbox.h/2;
+            const bcx = B.bbox.x + B.bbox.w/2, bcy = B.bbox.y + B.bbox.h/2;
+            const dx = Math.abs(acx - bcx); const dy = Math.abs(acy - bcy);
+            // If vertical centers close in Y, place side-by-side; otherwise stack vertically
+            orientation = dy < Math.min(A.bbox.h, B.bbox.h) * 0.6 ? 'horizontal' : 'vertical';
+          } else {
+            // Fallback: choose by aspect
+            orientation = (imgA.width + imgB.width) / Math.max(imgA.height, imgB.height) <= 2.2 ? 'horizontal' : 'vertical';
+          }
+          const cw = orientation === 'horizontal' ? (imgA.width + imgB.width) : Math.max(imgA.width, imgB.width);
+          const ch = orientation === 'horizontal' ? Math.max(imgA.height, imgB.height) : (imgA.height + imgB.height);
+          const combo = document.createElement('canvas'); combo.width = cw; combo.height = ch;
+          const ctx = combo.getContext('2d');
+          ctx.drawImage(imgA, 0, 0);
+          if (orientation === 'horizontal') ctx.drawImage(imgB, imgA.width, 0); else ctx.drawImage(imgB, 0, imgA.height);
+          const MAX_DIM = 1024;
+          let out = combo;
+          if (cw > MAX_DIM || ch > MAX_DIM) {
+            const s = Math.min(MAX_DIM/cw, MAX_DIM/ch);
+            out = document.createElement('canvas'); out.width = Math.round(cw*s); out.height = Math.round(ch*s);
+            out.getContext('2d').drawImage(combo, 0, 0, out.width, out.height);
+          }
+          const blob = await new Promise(res => out.toBlob(res, 'image/png'));
+          const aLab = baseLabelFromTitle(A.title) || (A.filename||'').replace(/\.png$/i,'').replace(/^fig-/i,'') || `p${A.page}`;
+          const bLab = baseLabelFromTitle(B.title) || (B.filename||'').replace(/\.png$/i,'').replace(/^fig-/i,'') || `p${B.page}`;
+          const newName = uniquifyFilename(`fig-${aLab}_${bLab}.png`);
+          // Remove originals, keep only combined
+          const hi = Math.max(i1,i2), lo = Math.min(i1,i2);
+          extractedFigures.splice(hi,1); extractedFigures.splice(lo,1);
+          const combined = {
+            page: A.page, width: out.width, height: out.height,
+            blob, url: URL.createObjectURL(blob),
+            filename: newName,
+            title: `Combined: ${A.title || A.filename} + ${B.title || B.filename}`,
+            caption: '', selected: true
+          };
+          extractedFigures.push(combined);
+          displayFxResults();
+        }
+
+        async function handlePPTXForFX(file) {
+            try {
+                fxOverlay.style.display = 'flex';
+                resetFigureUI();
+                fxStatus('Processing PowerPoint file...');
+                const zip = await JSZip.loadAsync(file);
+                const mediaFolder = zip.folder('ppt/media');
+                if (!mediaFolder) throw new Error('No media folder found.');
+                const imagePromises = [];
+                mediaFolder.forEach((relativePath, file) => {
+                    if (/\.(png|jpe?g|gif|bmp)$/i.test(relativePath)) {
+                        imagePromises.push(file.async('blob').then(blob => ({ blob, path: relativePath })));
+                    }
+                });
+                const imageFiles = await Promise.all(imagePromises);
+                fxStatus(`Found ${imageFiles.length} images. Extracting...`);
+                for (let i = 0; i < imageFiles.length; i++) {
+                    const imgFile = imageFiles[i];
+                    const url = URL.createObjectURL(imgFile.blob);
+                    const imgTag = await new Promise(resolve => { const image = new Image(); image.onload = () => resolve(image); image.src = url; });
+                    extractedFigures.push({
+                        page: `Slide ${i + 1}`, width: imgTag.width, height: imgTag.height, blob: imgFile.blob, url,
+                        filename: suggestFilename('', extractedFigures.length + 1), title: `Image from ${imgFile.path}`,
+                        caption: `Original dimensions: ${imgTag.width}×${imgTag.height}px`, selected: true
+                    });
+                }
+                updateFxProgress(100);
+                attachFxListeners();
+                displayFxResults();
+                // If nothing was extracted, auto-close and convert
+                if (extractedFigures.length === 0) {
+                    fxOverlay.style.display = 'none';
+                    const btn = document.getElementById('convertBtn');
+                    if (btn && !btn.disabled) btn.click();
+                }
+            } catch (err) {
+                fxError(`Error processing PPTX file: ${err.message}`);
+            } finally {
+                setTimeout(()=> fx.progress.style.display='none', 500);
+            }
+        }
+
+        async function handlePDFForFX(file) {
+            try {
+                fxOverlay.style.display = 'flex';
+                resetFigureUI();
+                await ensurePdfjsLibLoaded();
+                configurePdfjsWorker();
+                const arrayBuffer = await file.arrayBuffer();
+                const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                const totalPages = pdf.numPages;
+                fxStatus(`Analyzing ${totalPages} pages...`);
+                const minSizePercent = 0.02; // 2% of page area
+                const skipTables = true;
+                for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
+                    updateFxProgress(((pageNum - 1) / totalPages) * 100);
+                    fxStatus(`Processing page ${pageNum} of ${totalPages}...`);
+                    const page = await pdf.getPage(pageNum);
+                    const viewport = page.getViewport({ scale: 1.0 });
+                    const pageArea = viewport.width * viewport.height;
+                    const minPixelArea = pageArea * minSizePercent;
+                const textContent = await page.getTextContent();
+                const operatorList = await page.getOperatorList();
+                const identity = [1,0,0,1,0,0];
+                let currentTransform = identity.slice();
+                const transformStack = [];
+                const imagePaints = [];
+                const formPaints = [];
+                for (let i = 0; i < operatorList.fnArray.length; i++) {
+                    const fn = operatorList.fnArray[i];
+                    const args = operatorList.argsArray[i];
+                    if (fn === pdfjsLib.OPS.save) {
+                        transformStack.push(currentTransform.slice());
+                    } else if (fn === pdfjsLib.OPS.restore) {
+                        currentTransform = transformStack.pop() || identity.slice();
+                    } else if (fn === pdfjsLib.OPS.transform) {
+                        currentTransform = multiplyMatrices(currentTransform, args);
+                    } else if (fn === pdfjsLib.OPS.paintFormXObjectBegin) {
+                        const formM = (args && Array.isArray(args[0])) ? args[0] : identity;
+                        const bbox = (args && Array.isArray(args[1]) && args[1].length >= 4) ? args[1] : null;
+                        transformStack.push(currentTransform.slice());
+                        currentTransform = multiplyMatrices(currentTransform, formM);
+                        // Capture a candidate vector-figure rectangle for this Form XObject
+                        // Use provided bbox if available; otherwise approximate unit square
+                        formPaints.push({
+                            bbox: bbox ? [bbox[0], bbox[1], bbox[2], bbox[3]] : [0,0,1,1],
+                            hasBBox: !!bbox,
+                            ctm: currentTransform.slice()
+                        });
+                    } else if (pdfjsLib.OPS.paintFormXObjectEnd && fn === pdfjsLib.OPS.paintFormXObjectEnd) {
+                        currentTransform = transformStack.pop() || identity.slice();
+                    } else if (fn === pdfjsLib.OPS.paintImageXObject) {
+                        imagePaints.push({ arg: args[0], inline: false, ctm: currentTransform.slice() });
+                    } else if (pdfjsLib.OPS.paintInlineImageXObject && fn === pdfjsLib.OPS.paintInlineImageXObject) {
+                        imagePaints.push({ arg: null, inline: true, ctm: currentTransform.slice() });
+                    } else if (pdfjsLib.OPS.paintInlineImageXObjectGroup && fn === pdfjsLib.OPS.paintInlineImageXObjectGroup) {
+                        imagePaints.push({ arg: null, inline: true, ctm: currentTransform.slice() });
+                    }
+                }
+                    const renderScale = 3.0;
+                    const baseViewport = page.getViewport({ scale: renderScale });
+                    const aspectRatio = baseViewport.width / baseViewport.height;
+                    const extraPadding = aspectRatio > 1 ? 250 : 0;
+                    const marginPad = Math.max(120 + extraPadding, Math.round(Math.min(baseViewport.width, baseViewport.height) * 0.12));
+                    const renderViewport = page.getViewport({ scale: renderScale, offsetX: -marginPad, offsetY: -marginPad });
+                    const pageCanvas = document.createElement('canvas');
+                    pageCanvas.width = baseViewport.width + (marginPad * 2);
+                    pageCanvas.height = baseViewport.height + (marginPad * 2);
+                    const pageCtx = pageCanvas.getContext('2d');
+                    pageCtx.translate(marginPad, marginPad);
+                    await page.render({ canvasContext: pageCtx, viewport: renderViewport }).promise;
+                    pageCtx.setTransform(1, 0, 0, 1, 0, 0);
+                    const textBoxes = computeTextBoxesInRenderSpace(textContent, renderViewport).map(box => ({ x: box.x + marginPad, y: box.y + marginPad, w: box.w, h: box.h }));
+                const initialCrops = [];
+                // Raster images
+                for (const paint of imagePaints) {
+                    try {
+                        let isMask = false;
+                        if (!paint.inline && paint.arg) {
+                            const obj = page.objs.get(paint.arg);
+                            if (obj && obj.isMask) isMask = true;
+                        }
+                        if (isMask) continue;
+                        const t1 = multiplyMatrices(viewport.transform, paint.ctm);
+                        const p1 = applyToPoint(t1, 0, 0);
+                        const p2 = applyToPoint(t1, 1, 0);
+                        const p3 = applyToPoint(t1, 0, 1);
+                        const p4 = applyToPoint(t1, 1, 1);
+                        const minX1 = Math.min(p1.x, p2.x, p3.x, p4.x);
+                        const minY1 = Math.min(p1.y, p2.y, p3.y, p4.y);
+                        const maxX1 = Math.max(p1.x, p2.x, p3.x, p4.x);
+                        const maxY1 = Math.max(p1.y, p2.y, p3.y, p4.y);
+                        const dispWidth1 = Math.max(0, maxX1 - minX1);
+                        const dispHeight1 = Math.max(0, maxY1 - minY1);
+                        if (dispWidth1 * dispHeight1 < minPixelArea) continue;
+                        const ar = dispWidth1 / Math.max(1, dispHeight1);
+                        if (skipTables && (ar > 4 || ar < 0.25)) continue; // skip likely tables
+                const tr = multiplyMatrices(renderViewport.transform, paint.ctm);
+                const q1 = applyToPoint(tr, 0, 0);
+                const q2 = applyToPoint(tr, 1, 0);
+                const q3 = applyToPoint(tr, 0, 1);
+                const q4 = applyToPoint(tr, 1, 1);
+                let minX = Math.floor(Math.min(q1.x, q2.x, q3.x, q4.x));
+                let minY = Math.floor(Math.min(q1.y, q2.y, q3.y, q4.y));
+                let maxX = Math.ceil(Math.max(q1.x, q2.x, q3.x, q4.x));
+                let maxY = Math.ceil(Math.max(q1.y, q2.y, q3.y, q4.y));
+                // Adjust for margin padding used in render
+                minX += marginPad; minY += marginPad; maxX += marginPad; maxY += marginPad;
+                // Clamp to expanded canvas bounds
+                minX = Math.max(0, minX); minY = Math.max(0, minY);
+                maxX = Math.min(pageCanvas.width, maxX); maxY = Math.min(pageCanvas.height, maxY);
+                let cropW = Math.max(1, maxX - minX);
+                let cropH = Math.max(1, maxY - minY);
+                if (cropW <= 1 || cropH <= 1) continue;
+                const inset = 0;
+                minX += inset; minY += inset; cropW -= inset * 2; cropH -= inset * 2;
+                if (cropW <= 1 || cropH <= 1) continue;
+                // Defer trimming until after merging (match ExtractFigures)
+                initialCrops.push({ x: minX, y: minY, w: cropW, h: cropH });
+                    } catch {}
+                }
+                // Vector figures (Form XObjects)
+                for (const form of formPaints) {
+                    try {
+                        const [bx1, by1, bx2, by2] = form.bbox;
+                        const t1 = multiplyMatrices(viewport.transform, form.ctm);
+                        const v1 = applyToPoint(t1, bx1, by1);
+                        const v2 = applyToPoint(t1, bx2, by1);
+                        const v3 = applyToPoint(t1, bx1, by2);
+                        const v4 = applyToPoint(t1, bx2, by2);
+                        const minX1 = Math.min(v1.x, v2.x, v3.x, v4.x);
+                        const minY1 = Math.min(v1.y, v2.y, v3.y, v4.y);
+                        const maxX1 = Math.max(v1.x, v2.x, v3.x, v4.x);
+                        const maxY1 = Math.max(v1.y, v2.y, v3.y, v4.y);
+                        const dispWidth1 = Math.max(0, maxX1 - minX1);
+                        const dispHeight1 = Math.max(0, maxY1 - minY1);
+                        if (dispWidth1 * dispHeight1 < minPixelArea) continue;
+                        // Compute crop in render space
+                        const tr = multiplyMatrices(renderViewport.transform, form.ctm);
+                        const q1 = applyToPoint(tr, bx1, by1);
+                        const q2 = applyToPoint(tr, bx2, by1);
+                        const q3 = applyToPoint(tr, bx1, by2);
+                        const q4 = applyToPoint(tr, bx2, by2);
+                        let minX = Math.floor(Math.min(q1.x, q2.x, q3.x, q4.x));
+                        let minY = Math.floor(Math.min(q1.y, q2.y, q3.y, q4.y));
+                        let maxX = Math.ceil(Math.max(q1.x, q2.x, q3.x, q4.x));
+                        let maxY = Math.ceil(Math.max(q1.y, q2.y, q3.y, q4.y));
+                        minX += marginPad; minY += marginPad; maxX += marginPad; maxY += marginPad;
+                        minX = Math.max(0, minX); minY = Math.max(0, minY);
+                        maxX = Math.min(pageCanvas.width, maxX); maxY = Math.min(pageCanvas.height, maxY);
+                        let cropW = Math.max(1, maxX - minX);
+                        let cropH = Math.max(1, maxY - minY);
+                        if (cropW <= 1 || cropH <= 1) continue;
+                        initialCrops.push({ x: minX, y: minY, w: cropW, h: cropH });
+                    } catch {}
+                }
+                    if (initialCrops.length === 0) continue;
+                const mergedCrops = mergeImageBoxes(initialCrops, textBoxes);
+                for (const crop of mergedCrops) {
+                    let { x: cx, y: cy, w: cw, h: ch } = crop;
+                    if (cw <= 1 || ch <= 1) continue;
+                    const tempCanvas = document.createElement('canvas');
+                    tempCanvas.width = cw; tempCanvas.height = ch;
+                    tempCanvas.getContext('2d').drawImage(pageCanvas, cx, cy, cw, ch, 0, 0, cw, ch);
+                    const MAX_DIM = 1024;
+                    const scale = Math.min(MAX_DIM / cw, MAX_DIM / ch, 1);
+                    const newWidth = Math.round(cw * scale);
+                    const newHeight = Math.round(ch * scale);
+                    const finalCanvas = document.createElement('canvas');
+                    finalCanvas.width = newWidth; finalCanvas.height = newHeight;
+                    finalCanvas.getContext('2d').drawImage(tempCanvas, 0, 0, newWidth, newHeight);
+                    const blob = await new Promise(resolve => finalCanvas.toBlob(resolve, 'image/png'));
+                    if (!blob) continue;
+                    const { title, caption } = (typeof extractCaption === 'function') ? extractCaption(textContent.items) : { title: '', caption: '' };
+                    extractedFigures.push({
+                        page: pageNum, width: newWidth, height: newHeight, blob, url: URL.createObjectURL(blob),
+                        bbox: { x: cx, y: cy, w: cw, h: ch },
+                        filename: suggestFilename(title, pageNum), title, caption, selected: true
+                    });
+                }
+                }
+                updateFxProgress(100);
+                attachFxListeners();
+                displayFxResults();
+            } catch (err) {
+                fxError(`Error processing PDF file: ${err.message}`);
+            } finally {
+                setTimeout(()=> fx.progress.style.display='none', 500);
+            }
+        }
+
+        // Vector figures via Form XObjects are now captured too
+
+        // --------------------------------------------------------------- 
         // CONVERSION PROMPT
-        // ───────────────────────────────────────────────────────────────
-const CONVERSION_PROMPT = `Convert an academic research paper (from PDF or LaTeX source) into a structured XML document with the following rules. Transcribe the raw text of the paper EXACTLY, without correcting spelling and grammar, with the sole exception that you do not need to maintain line breaks (and hyphenations from line breaks) and other "pure formatting" aspects of the pdf. You do NOT need to transcribe a bibliography or works cited section, since you will be noting citations inline as they appear, or the 'thank you' notes if any on the first page. Export ONLY the xml, wrapped in <PAPER> </PAPER>. Place tables, figures, equations in the order they appear in the text, at the nearest paragraph break to where they appear in the paper.
+        // ---------------------------------------------------------------
+const CONVERSION_PROMPT = `Convert an academic research paper (from PDF or LaTeX source) into a structured XML document with the following rules. Transcribe the raw text of the paper EXACTLY, without correcting spelling and grammar, with the sole exception that you do not need to maintain line breaks (and hyphenations from line breaks) and other "pure formatting" aspects of the pdf. You do NOT need to transcribe a bibliography or works cited section, since you will be noting citations inline as they appear, or the 'thank you' notes if any on the first page. You DO need to transcribe the content of appendices. Export ONLY the xml, wrapped in <PAPER> </PAPER>. Place tables, figures, equations in the order they appear in the text, at the nearest paragraph break to where they appear in the paper.
 
 XML Structure Rules
 
@@ -916,7 +1542,7 @@ Use paragraph breaks (\\n\\n) between paragraphs. Do not wrap in <P> or any bloc
 
 Mathematics:
 
-ALWAYS wrap inline math in <MATH>...</MATH>. All math within this should be written in TeX. ALWAYS use \\lt, \\leq, \\rt, \\req for greater than or less than because otherwise it will break the XML rendering. Be sure to always write mathematics EXACTLY in latex format.
+ALWAYS wrap inline math in <MATH>...</MATH>. All math within this should be written in TeX. ALWAYS use \\lt, \\leq, \\gt, \\geq for greater than or less than because otherwise it will break the XML rendering. Be sure to always write mathematics EXACTLY in latex format.
 
 Wrap display/full-line equations in <FULL_LINE_EQUATION ref="eq_id"> <MATH>...</MATH> </FULL_LINE_EQUATION>. Again, this should be written in TeX.
 
@@ -926,7 +1552,7 @@ Use semantic tags with ref attributes. These should began with EXAMPLE 3 or PROP
 
 <THEOREM ref="thm_id">...</THEOREM>
 
-<PROPOSITION ref="prop_id">...</THEOREM>
+<PROPOSITION ref="prop_id">...</PROPOSITION>
 
 <COROLLARY ref="cor_id">...</COROLLARY>
 
@@ -944,7 +1570,7 @@ Citations & Footnotes:
 
 <CITATION ref="cite_id" title="The Title of the Paper" authors="Author 1, Author 2, and Author 3" year="year" journal="Journal Name">Bryan et al. (2019)</CITATION>
 
-The internal part of this tag should be exactly what the inline citation appears in the paper as, e.g., (Bryan et al 1994), [Johnson 1987], Smith and Jones 1974, [3], etc.
+The internal part of this tag should be exactly what the inline citation appears in the paper as, e.g., (Bryan et al 1994), [Johnson 1987], Smith and Jones 1974, [3], etc. Always include the full paper title, authors, year (if available), journal name.
 
 Use <FOOTNOTE ref="fn_id">...</FOOTNOTE>
 
@@ -971,7 +1597,7 @@ Figures should always be named fig_1.png, fig_2.png, etc., in line with the orig
 
 Appendices:
 
-Wrap appendix content in <APPENDIX ref="appendix_id">...</APPENDIX>
+Wrap appendix content in <APPENDIX ref="appendix_id">...</APPENDIX>. Make sure to include the full text of the appendices, including tables.
 
 Use standard HTML anchor format:
 
@@ -1014,9 +1640,9 @@ So now what one can see in <a href="#fig1">Figure 1</a> is that, as noted in <a 
   <IMG src="fig1_welfare.png" />
 </FIGURE> shows how precautionary savings affect wealth distribution.`;
 
-        // ─────────────────────────────────────────────────────────────── 
+        // --------------------------------------------------------------- 
         // API KEY MANAGEMENT
-        // ───────────────────────────────────────────────────────────────
+        // ---------------------------------------------------------------
 
 async function ensureLocalKey() {
   if (sessionApiKey) return sessionApiKey;
@@ -1087,9 +1713,9 @@ async function postGemini(payload) {
 }
 
 
-        // ─────────────────────────────────────────────────────────────── 
+        // --------------------------------------------------------------- 
         // PAPER TEXT EXTRACTION
-        // ───────────────────────────────────────────────────────────────
+        // ---------------------------------------------------------------
         function extractPaperText() {
             const xml = currentPaperXML;
             let text = '';
@@ -1120,9 +1746,9 @@ async function postGemini(payload) {
             currentPaperText = text;
         }
 
-        // ─────────────────────────────────────────────────────────────── 
+        // --------------------------------------------------------------- 
         // PAPER DATA LOADING
-        // ───────────────────────────────────────────────────────────────
+        // ---------------------------------------------------------------
         async function loadPaperData() {
             const params = new URLSearchParams(window.location.search);
             let dataUrl = params.get('data');
@@ -1134,21 +1760,98 @@ async function postGemini(payload) {
                     if (!response.ok) throw new Error(`Failed to fetch paper data from ${dataUrl}`);
                     let xmlText = await response.text();
                     
-                    // Clean up potential XML issues before parsing
-                    xmlText = xmlText
-                        .replace(/&(?!(?:amp|lt|gt|quot|apos|#\d+|#x[\da-fA-F]+);)/g, '&amp;')
-                        .replace(/(<[^>]+>)|([^<]+)/g, (match, tag, text) => {
-                            if (tag) return tag;
-                            return text.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                    // Clean up potential XML issues before parsing (allowlist sanitizer)
+                    // Allow core XML tags plus safe inline/HTML formatting tags used in content
+                    const allowedTags = new Set([
+                      'PAPER','TITLE','AUTHORS','PUBLICATION_DATE','ABSTRACT','PLAINTEXT',
+                      'SECTION','SUBSECTION','SUBSUBSECTION','FULL_LINE_EQUATION','MATH',
+                      'THEOREM','PROPOSITION','COROLLARY','PROOF','LEMMA','DEFINITION','ASSUMPTION','EXAMPLE',
+                      'FOOTNOTE','CITATION','TABLE','CAPTION','FIGURE','IMG','APPENDIX','XREF','PDF',
+                      // Common inline/HTML tags that may appear in content
+                      'B','I','EM','STRONG','UL','OL','LI','DL','DT','DD','A','BR','SUP','SUB',
+                      // HTML table markup (in case model emits native HTML tables)
+                      'THEAD','TBODY','TFOOT','TR','TH','TD'
+                    ]);
+                    function sanitizeXml(text) {
+                      // 0) turn escaped allowed tags like &lt;a ...&gt; back into real tags
+                      const unescapeAllowed = (t) => {
+                        // self-closing first: &lt;TAG ... /&gt;
+                        t = t.replace(/&lt;\s*([A-Za-z_][\w-]*)\b([\s\S]*?)\/&gt;/g, (m, n, attrs) => {
+                          const name = n.toUpperCase();
+                          if (!allowedTags.has(name)) return m; // leave escaped
+                          const a = attrs.replace(/&amp;/g,'&').replace(/&quot;/g,'"').replace(/&apos;/g,"'").replace(/&lt;/g,'<').replace(/&gt;/g,'>');
+                          return `<${n}${a}/>`;
                         });
-                        
+                        // opening/closing: &lt;/TAG ...&gt; or &lt;TAG ...&gt;
+                        t = t.replace(/&lt;(\/)?\s*([A-Za-z_][\w-]*)\b([\s\S]*?)&gt;/g, (m, slash, n, attrs) => {
+                          const name = n.toUpperCase();
+                          if (!allowedTags.has(name)) return m; // leave escaped
+                          const a = attrs.replace(/&amp;/g,'&').replace(/&quot;/g,'"').replace(/&apos;/g,"'").replace(/&lt;/g,'<').replace(/&gt;/g,'>');
+                          return `<${slash ? '/' : ''}${n}${a}>`;
+                        });
+                        return t;
+                      };
+                      text = unescapeAllowed(text);
+                      // 1) escape stray ampersands
+                      text = text.replace(/&(?!(?:amp|lt|gt|quot|apos|#\d+|#x[\da-fA-F]+);)/g, '&amp;');
+                      // 2) keep only allowed tags; escape others and angle brackets in plain text
+                      return text.replace(/(<[^>]+>)|([^<]+)/g, (match, tag, plain) => {
+                        if (tag) {
+                          const m = tag.match(/^<\/?\s*([A-Za-z_][\w-]*)/);
+                          const name = m ? m[1].toUpperCase() : '';
+                          if (!allowedTags.has(name)) return tag.replace(/</g,'&lt;').replace(/>/g,'&gt;');
+                          return tag;
+                        }
+                        return plain.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                      });
+                    }
+                    xmlText = sanitizeXml(xmlText);
+
+                    // Normalize and clean references in the XML so downloads are correct
+                    function normalizeAndCleanXML(xmlStr) {
+                      const parser = new DOMParser();
+                      let doc = parser.parseFromString(xmlStr, 'application/xml');
+                      // Build set of valid targets by @ref
+                      const targetTags = [
+                        'SECTION','SUBSECTION','SUBSUBSECTION','FIGURE','TABLE','FULL_LINE_EQUATION',
+                        'THEOREM','PROPOSITION','COROLLARY','PROOF','LEMMA','DEFINITION','ASSUMPTION','EXAMPLE'
+                      ];
+                      const targets = new Set();
+                      targetTags.forEach(tag => {
+                        doc.querySelectorAll(tag).forEach(el => {
+                          const id = el.getAttribute('ref');
+                          if (id) targets.add(id);
+                        });
+                      });
+                      const isInFootnote = (el) => {
+                        let p = el.parentNode; const needle = 'FOOTNOTE';
+                        while (p && p.nodeType === 1) { if (p.nodeName === needle) return true; p = p.parentNode; }
+                        return false;
+                      };
+                      const unwrapKeepChildren = (el) => {
+                        const parent = el.parentNode; if (!parent) return;
+                        while (el.firstChild) parent.insertBefore(el.firstChild, el);
+                        parent.removeChild(el);
+                      };
+                      // Remove/unwrap bad refs and all refs inside footnotes
+                      doc.querySelectorAll('XREF').forEach(x => {
+                        const ref = x.getAttribute('ref');
+                        if (isInFootnote(x) || !ref || !targets.has(ref)) unwrapKeepChildren(x);
+                      });
+                      // Serialize back
+                      const ser = new XMLSerializer().serializeToString(doc);
+                      return { xmlText: ser, xmlDoc: doc };
+                    }
+                    const normalized = normalizeAndCleanXML(xmlText);
+                    xmlText = normalized.xmlText;
+                    
                     window.generatedXML = xmlText;
                     if (usedUploadThisSession) {
                         document.getElementById('downloadXmlBtn').style.display = 'block';
                     }
 
                     try {
-                        currentPaperXML = new DOMParser().parseFromString(xmlText, 'application/xml');
+                        currentPaperXML = normalized.xmlDoc || new DOMParser().parseFromString(xmlText, 'application/xml');
                         extractPaperText();
                         loadingOverlay.style.display = 'none';
                         renderPaperFromXML();
@@ -1175,14 +1878,30 @@ async function postGemini(payload) {
             uploadModal.style.display = 'block';
             loadingOverlay.style.display = 'none';
             
-            fileInput.addEventListener('change', (e) => {
+            fileInput.addEventListener('change', async (e) => {
                 const files = Array.from(e.target.files);
                 if (files.length > 0) {
                     uploadStatus.innerHTML = `<strong>Selected:</strong> ${files.map(f => f.name).join(', ')}<br>Click "Convert Paper" to proceed.`;
                     convertBtn.style.display = 'block';
+                    // Trigger figure extraction for PDF/PPTX
+                    try {
+                        const pdf = files.find(f => /\.pdf$/i.test(f.name));
+                        const pptx = files.find(f => /\.pptx$/i.test(f.name));
+                        if (pdf || pptx) {
+                            fxOverlay.style.display = 'flex';
+                            if (pdf) await handlePDFForFX(pdf); else await handlePPTXForFX(pptx);
+                        } else {
+                            resetFigureUI();
+                            // No figures to review; kick off conversion automatically
+                            const btn = document.getElementById('convertBtn');
+                            if (btn && !btn.disabled) btn.click();
+                        }
+                    } catch (err) { console.error('Figure extraction error:', err); }
                 } else {
                     uploadStatus.textContent = '';
                     convertBtn.style.display = 'none';
+                    resetFigureUI();
+                    fxOverlay.style.display = 'none';
                 }
             });
             
@@ -1218,28 +1937,119 @@ async function postGemini(payload) {
                     // 2. Prepare the request for the Gemini API
                     const files = Array.from(fileInput.files);
                     const fileParts = await Promise.all(files.map(fileToGenerativePart));
+                    // Prepare selected images (if any)
+                    const selectedImages = extractedFigures.filter(f => f.selected);
+                    // Map for local rendering of images by filename
+                    window.figureBlobMap = Object.fromEntries(selectedImages.map(f => [f.filename, f.url]));
+                    window.selectedExtractedFigures = selectedImages;
+                    const toBase64 = (blob) => new Promise((resolve, reject) => { const r=new FileReader(); r.onloadend=()=>resolve(r.result.split(',')[1]); r.onerror=reject; r.readAsDataURL(blob); });
+                    const imageParts = [];
+                    for (const fig of selectedImages) {
+                        const b64 = await toBase64(fig.blob);
+                        imageParts.push({ text: `Image filename: ${fig.filename}` });
+                        imageParts.push({ inlineData: { mimeType: 'image/png', data: b64 } });
+                    }
+                    const imagesInstruction = selectedImages.length ? `\n\nFigures: I am including figure image files. Use these exact filenames in <IMG src> where appropriate, and reference them in order of appearance in the text: ${selectedImages.map(f=>f.filename).join(', ')}.` : '';
 
 const responseData = await postGemini({
   model: 'gemini-2.5-pro',
-  contents: [{ parts: [{ text: CONVERSION_PROMPT }, ...fileParts] }],
+  contents: [{ parts: [{ text: CONVERSION_PROMPT + imagesInstruction }, ...fileParts, ...imageParts] }],
   generationConfig: { temperature: 0.1, maxOutputTokens: 65000 }
 });
-                    console.log('✅ Received response from Gemini conversion');
+                    console.log('Received response from Gemini conversion');
                     
                     // 4. Extract and clean the XML from the response
                     let xmlText = responseData.candidates[0].content.parts[0].text;
-                    // Strip bold/italic/etc. tags entirely
-                    xmlText = xmlText.replace(/<\/?(?:b|i|em|strong|ul|ol|li)>/gi, '');
                     // Remove markdown code block fences if the model adds them
-                    xmlText = xmlText.trim().replace(/^```xml\n/, '').replace(/\n```$/, '');
+                    xmlText = xmlText.trim().replace(/^```xml\n?/, '').replace(/\n?```$/, '');
 
-                    // Sanitize before parsing (same as the data-url path)
-                    xmlText = xmlText
-                        .replace(/&(?!(?:amp|lt|gt|quot|apos|#\d+|#x[\da-fA-F]+);)/g, '&amp;')
-                        .replace(/(<[^>]+>)|([^<]+)/g, (match, tag, text) => {
-                            if (tag) return tag;
-                            return text.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                    // Sanitize before parsing using allowlist of tags
+                    const allowedTags = new Set([
+                      'PAPER','TITLE','AUTHORS','PUBLICATION_DATE','ABSTRACT','PLAINTEXT',
+                      'SECTION','SUBSECTION','SUBSUBSECTION','FULL_LINE_EQUATION','MATH',
+                      'THEOREM','PROPOSITION','COROLLARY','PROOF','LEMMA','DEFINITION','ASSUMPTION','EXAMPLE',
+                      'FOOTNOTE','CITATION','TABLE','CAPTION','FIGURE','IMG','APPENDIX','XREF','PDF',
+                      // Common inline/HTML tags that may appear in content
+                      'B','I','EM','STRONG','UL','OL','LI','DL','DT','DD','A','BR','SUP','SUB',
+                      // HTML table markup (in case model emits native HTML tables)
+                      'THEAD','TBODY','TFOOT','TR','TH','TD'
+                    ]);
+                    function sanitizeXml(text) {
+                      // 0) turn escaped allowed tags like &lt;a ...&gt; back into real tags
+                      const unescapeAllowed = (t) => {
+                        // self-closing first
+                        t = t.replace(/&lt;\s*([A-Za-z_][\w-]*)\b([\s\S]*?)\/&gt;/g, (m, n, attrs) => {
+                          const name = n.toUpperCase();
+                          if (!allowedTags.has(name)) return m;
+                          const a = attrs.replace(/&amp;/g,'&').replace(/&quot;/g,'"').replace(/&apos;/g,"'").replace(/&lt;/g,'<').replace(/&gt;/g,'>');
+                          return `<${n}${a}/>`;
                         });
+                        // opening/closing
+                        t = t.replace(/&lt;(\/)?\s*([A-Za-z_][\w-]*)\b([\s\S]*?)&gt;/g, (m, slash, n, attrs) => {
+                          const name = n.toUpperCase();
+                          if (!allowedTags.has(name)) return m;
+                          const a = attrs.replace(/&amp;/g,'&').replace(/&quot;/g,'"').replace(/&apos;/g,"'").replace(/&lt;/g,'<').replace(/&gt;/g,'>');
+                          return `<${slash ? '/' : ''}${n}${a}>`;
+                        });
+                        return t;
+                      };
+                      text = unescapeAllowed(text);
+                      // 1) escape stray ampersands
+                      text = text.replace(/&(?!(?:amp|lt|gt|quot|apos|#\d+|#x[\da-fA-F]+);)/g, '&amp;');
+                      // 2) escape angle brackets in non-tag text; only keep allowed tags
+                      return text.replace(/(<[^>]+>)|([^<]+)/g, (match, tag, plain) => {
+                        if (tag) {
+                          const m = tag.match(/^<\/?\s*([A-Za-z_][\w-]*)/);
+                          const name = m ? m[1].toUpperCase() : '';
+                          if (!allowedTags.has(name)) {
+                            // not an allowed tag: escape entire token
+                            return tag.replace(/</g,'&lt;').replace(/>/g,'&gt;');
+                          }
+                          return tag; // keep allowed tag as-is
+                        }
+                        // escape < and > in plain text (fixes things like p<.00001)
+                        return plain.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                      });
+                    }
+                    xmlText = sanitizeXml(xmlText);
+
+                    // Normalize and clean references in the XML so downloads are correct
+                    function normalizeAndCleanXML(xmlStr) {
+                      const parser = new DOMParser();
+                      let doc = parser.parseFromString(xmlStr, 'application/xml');
+                      // Build set of valid targets by @ref
+                      const targetTags = [
+                        'SECTION','SUBSECTION','SUBSUBSECTION','FIGURE','TABLE','FULL_LINE_EQUATION',
+                        'THEOREM','PROPOSITION','COROLLARY','PROOF','LEMMA','DEFINITION','ASSUMPTION','EXAMPLE'
+                      ];
+                      const targets = new Set();
+                      targetTags.forEach(tag => {
+                        doc.querySelectorAll(tag).forEach(el => {
+                          const id = el.getAttribute('ref');
+                          if (id) targets.add(id);
+                        });
+                      });
+                      const isInFootnote = (el) => {
+                        let p = el.parentNode; const needle = 'FOOTNOTE';
+                        while (p && p.nodeType === 1) { if (p.nodeName === needle) return true; p = p.parentNode; }
+                        return false;
+                      };
+                      const unwrapKeepChildren = (el) => {
+                        const parent = el.parentNode; if (!parent) return;
+                        while (el.firstChild) parent.insertBefore(el.firstChild, el);
+                        parent.removeChild(el);
+                      };
+                      // Remove/unwrap bad refs and all refs inside footnotes
+                      doc.querySelectorAll('XREF').forEach(x => {
+                        const ref = x.getAttribute('ref');
+                        if (isInFootnote(x) || !ref || !targets.has(ref)) unwrapKeepChildren(x);
+                      });
+                      // Serialize back
+                      const ser = new XMLSerializer().serializeToString(doc);
+                      return { xmlText: ser, xmlDoc: doc };
+                    }
+                    const normalized = normalizeAndCleanXML(xmlText);
+                    xmlText = normalized.xmlText;
 
                     window.generatedXML = xmlText; // Store for potential download
                     if (usedUploadThisSession) {
@@ -1247,7 +2057,7 @@ const responseData = await postGemini({
                     }
 
                     // 5. Parse and render the generated XML
-                    currentPaperXML = new DOMParser().parseFromString(xmlText, "application/xml");
+                    currentPaperXML = normalized.xmlDoc || new DOMParser().parseFromString(xmlText, "application/xml");
                     
                     extractPaperText();
                     renderPaperFromXML();
@@ -1265,9 +2075,9 @@ const responseData = await postGemini({
             });
         }
 
-        // ─────────────────────────────────────────────────────────────── 
+        // --------------------------------------------------------------- 
         // XML CONTENT TRANSFORMATION HELPERS
-        // ───────────────────────────────────────────────────────────────
+        // ---------------------------------------------------------------
         function transformXMLContent(xmlStr) {
             /* 1. inline / display math ------------------------------------------ */
             xmlStr = xmlStr.replace(
@@ -1283,9 +2093,9 @@ const responseData = await postGemini({
                 (_, tex) => `\\(${tex}\\)`
             );
 
-            xmlStr = xmlStr.replace(/<\/?(?:b|i|em|strong|ul|ol|li)>/gi, '');
+            // Preserve inline formatting and list tags (<b>, <i>, <em>, <strong>, <ul>, <ol>, <li>)
 
-            /* 2. foot‑notes (as popups, not a list) ----------------------------- */
+            /* 2. foot-notes (as popups, not a list) ----------------------------- */
             xmlStr = xmlStr.replace(/<FOOTNOTE[^>]*>([\s\S]*?)<\/FOOTNOTE>/g,
                 (_, note) => {
                     footnoteCounter++;
@@ -1335,6 +2145,10 @@ const responseData = await postGemini({
                     const cap = (content.match(/<CAPTION>([\s\S]*?)<\/CAPTION>/i)?.[1] || '').trim();
                     let img = content.match(/<IMG[^>]*src="([^"]+)"[^>]*\/?>/i)?.[1] || '';
 
+                    // Map to locally extracted blobs if present
+                    if (img && window.figureBlobMap && window.figureBlobMap[img]) {
+                        img = window.figureBlobMap[img];
+                    }
                     // Prepend base path from ?data= if needed
                     const dataParam = new URLSearchParams(window.location.search).get('data');
                     if (img && dataParam && !/^https?:\/\//i.test(img)) {
@@ -1342,8 +2156,15 @@ const responseData = await postGemini({
                         img = basePath + img;
                     }
 
+                    // Escape caption for attribute context
+                    const capAttr = cap
+                        .replace(/&/g, '&amp;')
+                        .replace(/"/g, '&quot;')
+                        .replace(/</g, '&lt;')
+                        .replace(/>/g, '&gt;');
+
                     return `<div class="figure" ${ref ? `id="${ref}"` : ''}>
-                        <img src="${img}" alt="${cap}">
+                        <img src="${img}" alt="${capAttr}">
                         ${cap ? `<div class="figure-caption">${cap}</div>` : ''}
                     </div>`;
                 });
@@ -1353,17 +2174,19 @@ const responseData = await postGemini({
                 (_, attrs, content) => {
                     const ref = attrs.match(/ref="([^"]+)"/)?.[1] || '';
                     let caption = '';
-                    content = content.replace(/<CAPTION>([\s\S]*?)<\/CAPTION>/g, (_, cap) => {
+                    content = content.replace(/<CAPTION>([\s\S]*?)<\/CAPTION>/gi, (_, cap) => {
                         caption = cap;
                         return '';
                     });
                     
-                    // Convert XML table structure to HTML
+                    // Convert XML/HTML table structure to HTML (normalize in case of uppercase)
                     let htmlTable = content
                         .replace(/<thead>/gi, '<thead>')
                         .replace(/<\/thead>/gi, '</thead>')
                         .replace(/<tbody>/gi, '<tbody>')
                         .replace(/<\/tbody>/gi, '</tbody>')
+                        .replace(/<tfoot>/gi, '<tfoot>')
+                        .replace(/<\/tfoot>/gi, '</tfoot>')
                         .replace(/<tr>/gi, '<tr>')
                         .replace(/<\/tr>/gi, '</tr>')
                         .replace(/<th>/gi, '<th>')
@@ -1384,11 +2207,14 @@ const responseData = await postGemini({
             return xmlStr;
         }
 
-        // ─────────────────────────────────────────────────────────────── 
+        // --------------------------------------------------------------- 
         // XML PAPER RENDERING
-        // ───────────────────────────────────────────────────────────────
+        // ---------------------------------------------------------------
         function renderPaperFromXML() {
             const xml = currentPaperXML;
+            // Reveal sidebar only once we have an XML to show
+            const sb = document.getElementById('sidebar');
+            if (sb) sb.style.display = 'block';
 
             // 1. Render the paper's header
             const title = xml.querySelector('TITLE').textContent;
@@ -1518,9 +2344,9 @@ const responseData = await postGemini({
             }
         }
 
-        // ─────────────────────────────────────────────────────────────── 
+        // --------------------------------------------------------------- 
         // TABLE OF CONTENTS GENERATION
-        // ───────────────────────────────────────────────────────────────
+        // ---------------------------------------------------------------
         function buildTOCFromXML() {
             let tocHTML = '';
             // Correctly get the title from the SECTION tag's text content.
@@ -1545,9 +2371,9 @@ const responseData = await postGemini({
             });
         }
 
-        // ─────────────────────────────────────────────────────────────── 
+        // --------------------------------------------------------------- 
         // INTERACTIVE SECTION HANDLING
-        // ───────────────────────────────────────────────────────────────
+        // ---------------------------------------------------------------
         function attachSectionListeners() {
             document.querySelectorAll('.section-header').forEach(header => {
                 header.addEventListener('click', () => {
@@ -1568,9 +2394,9 @@ const responseData = await postGemini({
             });
         }
 
-        // ─────────────────────────────────────────────────────────────── 
+        // --------------------------------------------------------------- 
         // CITATION AND FOOTNOTE INTERACTION
-        // ───────────────────────────────────────────────────────────────
+        // ---------------------------------------------------------------
         function attachCitationListeners() {
             document.querySelectorAll('.citation').forEach(cite => {
                 const show = e => { showCitationPopup(cite); popup.dataset.sticky = 'true'; };
@@ -1594,9 +2420,9 @@ const responseData = await postGemini({
             });
         }
 
-        // ─────────────────────────────────────────────────────────────── 
+        // --------------------------------------------------------------- 
         // POPUP MANAGEMENT
-        // ───────────────────────────────────────────────────────────────
+        // ---------------------------------------------------------------
         function showCitationPopup(element) {
             const html = decodeURIComponent(element.dataset.details || '');
             popupContent.innerHTML = html;
@@ -1657,9 +2483,9 @@ const responseData = await postGemini({
             popup.style.display = 'none';
         }
 
-        // ─────────────────────────────────────────────────────────────── 
+        // --------------------------------------------------------------- 
         // PLAINTEXT SUMMARY MODAL
-        // ───────────────────────────────────────────────────────────────
+        // ---------------------------------------------------------------
         function showPlaintextModal() {
             const modal = document.createElement('div');
             modal.style.cssText = 'position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 30px; border-radius: 8px; box-shadow: var(--popup-shadow); max-width: 700px; width: 90%; max-height: 80vh; overflow-y: auto; z-index: 2002;';
@@ -1698,9 +2524,9 @@ const responseData = await postGemini({
             }
         }
 
-        // ─────────────────────────────────────────────────────────────── 
+        // --------------------------------------------------------------- 
         // ERROR HANDLING AND FALLBACKS
-        // ───────────────────────────────────────────────────────────────
+        // ---------------------------------------------------------------
         function showXmlFallback(xmlText) {
             // show download button if we have XML
             if (xmlText) {
@@ -1717,9 +2543,9 @@ const responseData = await postGemini({
                 </div>`;
         }
 
-        // ─────────────────────────────────────────────────────────────── 
+        // --------------------------------------------------------------- 
         // AI CHAT FUNCTIONALITY
-        // ───────────────────────────────────────────────────────────────
+        // ---------------------------------------------------------------
         async function askAboutPaper(query, history = []) {
             if (!currentPaperText) extractPaperText();
             
@@ -1740,7 +2566,6 @@ const data = await postGemini({
   generationConfig: { temperature: 0.3, maxOutputTokens: 8000 }
 });
 return data.candidates[0].content.parts[0].text;
-            return data.candidates[0].content.parts[0].text;
         }
 
         async function sendMessage() {
@@ -1822,9 +2647,9 @@ return data.candidates[0].content.parts[0].text;
             }
         }
 
-        // ─────────────────────────────────────────────────────────────── 
+        // --------------------------------------------------------------- 
         // EVENT LISTENERS SETUP
-        // ───────────────────────────────────────────────────────────────
+        // ---------------------------------------------------------------
         
         // Figure zoom interaction
         document.addEventListener('mousemove', e => {
@@ -1879,17 +2704,24 @@ return data.candidates[0].content.parts[0].text;
             }
         });
 
-        // Download XML functionality
-        document.getElementById('downloadXmlBtn').addEventListener('click', () => {
-            if (window.generatedXML) {
+        // Download XML + images functionality (zip if images present)
+        document.getElementById('downloadXmlBtn').addEventListener('click', async () => {
+            if (!window.generatedXML) return;
+            const selected = (window.selectedExtractedFigures || []).filter(f => f && f.blob);
+            if (selected.length === 0 || typeof JSZip === 'undefined') {
+                // Fallback: just XML
                 const blob = new Blob([window.generatedXML], { type: 'text/xml' });
                 const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = 'paper.xml';
-                a.click();
-                URL.revokeObjectURL(url);
+                const a = document.createElement('a'); a.href = url; a.download = 'paper.xml'; a.click(); URL.revokeObjectURL(url);
+                return;
             }
+            const zip = new JSZip();
+            zip.file('paper.xml', window.generatedXML);
+            selected.forEach(fig => zip.file(fig.filename, fig.blob));
+            const content = await zip.generateAsync({ type: 'blob' });
+            const url = URL.createObjectURL(content);
+            const a = document.createElement('a'); a.href = url; a.download = 'paper_with_images.zip'; a.click();
+            URL.revokeObjectURL(url);
         });
 
         // Window resize handler
@@ -1899,9 +2731,9 @@ return data.candidates[0].content.parts[0].text;
             }
         });
 
-        // ─────────────────────────────────────────────────────────────── 
+        // --------------------------------------------------------------- 
         // APPLICATION INITIALIZATION
-        // ───────────────────────────────────────────────────────────────
+        // ---------------------------------------------------------------
         document.addEventListener('DOMContentLoaded', () => {
             loadPaperData();
         });
