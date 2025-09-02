@@ -2250,7 +2250,7 @@ const responseData = await postGemini({
 
             // 2. Set up parsing with paragraph buffer
             let paragraphBuffer = '';
-            const INLINE_TAGS = ['CITATION', 'MATH', 'FOOTNOTE', 'XREF'];
+            const INLINE_TAGS = ['CITATION', 'MATH', 'FOOTNOTE', 'XREF', 'I', 'B', 'EM', 'STRONG', 'SUP', 'SUB'];
             let sectionStack = [];
 
             function flushParagraphBuffer() {
