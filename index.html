@@ -2211,6 +2211,7 @@ const responseData = await postGemini({
         // XML PAPER RENDERING
         // ---------------------------------------------------------------
         function renderPaperFromXML() {
+            footnoteCounter = 0;
             const xml = currentPaperXML;
             // Reveal sidebar only once we have an XML to show
             const sb = document.getElementById('sidebar');
