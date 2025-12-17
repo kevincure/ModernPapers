@@ -1692,7 +1692,7 @@ async function postGemini(payload) {
     if (!isLocal) throw err;
 
     const key = await ensureLocalKey();
-    const model = payload.model || 'gemini-2.5-flash';
+    const model = payload.model || 'gemini-3-flash-preview';
     const direct = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(key)}`,
       {
@@ -2211,6 +2211,7 @@ const responseData = await postGemini({
         // XML PAPER RENDERING
         // ---------------------------------------------------------------
         function renderPaperFromXML() {
+            footnoteCounter = 0;
             const xml = currentPaperXML;
             // Reveal sidebar only once we have an XML to show
             const sb = document.getElementById('sidebar');
@@ -2458,24 +2459,6 @@ const responseData = await postGemini({
               top = targetRect.top + scrollTop - popupRect.height - 5;
             }
             popup.style.top = top + 'px';
-            
-            // Position horizontally centered on target
-            // const left = targetRect.left;
-            // popup.style.left = left + 'px';
-            // popup.style.maxWidth = '400px';
-            
-            // Try positioning below the target first
-            // let top = targetRect.bottom + scrollTop + 5;
-            // popup.style.top = top + 'px';
-            // popup.style.display = 'block'; // Temporarily show to get dimensions
-            
-            // Check if it goes off bottom of viewport
-            // const popupRect = popup.getBoundingClientRect();
-            // if (popupRect.bottom > viewportHeight - 20) {
-                // Position above instead
-         //       top = targetRect.top + scrollTop - popupRect.height - 5;
-          //      popup.style.top = top + 'px';
-          //  }
         }
 
         function hidePopup() {
@@ -2561,7 +2544,7 @@ const responseData = await postGemini({
             Please provide a clear, concise answer based ONLY on the paper's content. If there is a single most relevant sentence from the paper that supports your answer (most cases), include it exactly as: <REFERENCE>One VERBATIM SENTENCE REPRODUCED EXACTLY from the paper.</REFERENCE>. Do NOT answer questions unrelated to the paper - just respond, I think that's unrelated to the paper, so I'm afraid I don't have an answer. Math should be written in LaTeX with $...$. Most answers will be a single paragraph; use up to 3 if absolutely necessary to answer the user question. Do not use Markdown in your response. Do NOT say 'based on the paper' or similar: the user knows this conversation is about a paper.`;
 
 const data = await postGemini({
-  model: 'gemini-2.5-flash',
+  model: 'gemini-3-flash-preview',
   contents: [{ parts: [{ text: prompt }] }],
   generationConfig: { temperature: 0.3, maxOutputTokens: 8000 }
 });
