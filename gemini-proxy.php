@@ -15,11 +15,11 @@ $in = json_decode(file_get_contents('php://input'), true);
 if (!is_array($in)) { http_response_code(400); echo json_encode(['error'=>'bad json']); exit; }
 
 // Pull model (default if omitted) and lightly validate
-$model = $in['model'] ?? 'gemini-2.5-flash';
+$model = $in['model'] ?? 'gemini-3.1-flash-lite';
 if (!preg_match('/^[\w.\-:]+$/', $model)) { http_response_code(400); echo json_encode(['error'=>'invalid model']); exit; }
 
 // Optional allowlist (uncomment to lock down)
-// $allowed = ['gemini-2.5-flash','gemini-2.5-pro','gemini-1.5-flash','gemini-1.5-pro'];
+// $allowed = ['gemini-3.1-flash-lite','gemini-2.5-pro','gemini-1.5-flash','gemini-1.5-pro'];
 // if (!in_array($model, $allowed, true)) { http_response_code(400); echo json_encode(['error'=>'model not allowed']); exit; }
 
 // Forward everything else as-is (remove "model" key before forwarding)

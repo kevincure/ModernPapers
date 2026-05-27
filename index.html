@@ -1692,7 +1692,7 @@ async function postGemini(payload) {
     if (!isLocal) throw err;
 
     const key = await ensureLocalKey();
-    const model = payload.model || 'gemini-3-flash-preview';
+    const model = payload.model || 'gemini-3.1-flash-lite';
     const direct = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(key)}`,
       {
@@ -1952,16 +1952,28 @@ async function postGemini(payload) {
                     const imagesInstruction = selectedImages.length ? `\n\nFigures: I am including figure image files. Use these exact filenames in <IMG src> where appropriate, and reference them in order of appearance in the text: ${selectedImages.map(f=>f.filename).join(', ')}.` : '';
 
 const responseData = await postGemini({
-  model: 'gemini-2.5-pro',
+  model: 'gemini-3.1-flash-lite',
   contents: [{ parts: [{ text: CONVERSION_PROMPT + imagesInstruction }, ...fileParts, ...imageParts] }],
   generationConfig: { temperature: 0.1, maxOutputTokens: 65000 }
 });
                     console.log('Received response from Gemini conversion');
                     
                     // 4. Extract and clean the XML from the response
-                    let xmlText = responseData.candidates[0].content.parts[0].text;
+                    const candidateText = responseData?.candidates?.[0]?.content?.parts?.map(p => p?.text || '').join('') || '';
+                    if (!candidateText.trim()) {
+                      throw new Error('Model returned no text output. Please retry conversion.');
+                    }
+                    let xmlText = candidateText;
+                    // Keep raw output available for fallback/debug downloads even if later checks fail
+                    window.generatedXML = xmlText;
                     // Remove markdown code block fences if the model adds them
                     xmlText = xmlText.trim().replace(/^```xml\n?/, '').replace(/\n?```$/, '');
+
+                    // Guard against half-finished outputs
+                    if (!xmlText.includes('<PAPER') || !xmlText.includes('</PAPER>')) {
+                      window.generatedXML = xmlText;
+                      throw new Error('Model output appears incomplete (missing <PAPER> wrapper). Please retry conversion.');
+                    }
 
                     // Sanitize before parsing using allowlist of tags
                     const allowedTags = new Set([
@@ -2544,7 +2556,7 @@ const responseData = await postGemini({
             Please provide a clear, concise answer based ONLY on the paper's content. If there is a single most relevant sentence from the paper that supports your answer (most cases), include it exactly as: <REFERENCE>One VERBATIM SENTENCE REPRODUCED EXACTLY from the paper.</REFERENCE>. Do NOT answer questions unrelated to the paper - just respond, I think that's unrelated to the paper, so I'm afraid I don't have an answer. Math should be written in LaTeX with $...$. Most answers will be a single paragraph; use up to 3 if absolutely necessary to answer the user question. Do not use Markdown in your response. Do NOT say 'based on the paper' or similar: the user knows this conversation is about a paper.`;
 
 const data = await postGemini({
-  model: 'gemini-3-flash-preview',
+  model: 'gemini-3.1-flash-lite',
   contents: [{ parts: [{ text: prompt }] }],
   generationConfig: { temperature: 0.3, maxOutputTokens: 8000 }
 });
