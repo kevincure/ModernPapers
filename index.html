@@ -800,6 +800,89 @@
         .figure-title { font-weight: 600; color: #1e3c72; margin-bottom: 6px; font-family: var(--font-sans); }
         .image-info { font-size: 0.9rem; color: #666; margin-bottom: 6px; font-family: var(--font-sans); }
         .filename-input { width:100%; padding:6px; border:1px solid #ddd; border-radius:6px; margin-top:6px; font-size:0.9rem; font-family: var(--font-sans); }
+
+        /* --------------------------------------------------------------- */
+        /* CONVERSION STATUS, WARNINGS, AND FALLBACKS */
+        /* --------------------------------------------------------------- */
+        .loading-overlay { flex-direction: column; gap: 10px; }
+        .loading-detail {
+            margin-top: 4px;
+            color: #777;
+            font-size: 0.82rem;
+            max-width: 520px;
+            line-height: 1.45;
+        }
+        .conversion-alert {
+            font-family: var(--font-sans);
+            border-radius: 8px;
+            padding: 14px 16px;
+            margin: 0 0 24px;
+            border: 1px solid var(--border-color);
+            background: #fff7df;
+            color: #4f3b00;
+            line-height: 1.5;
+        }
+        .conversion-alert strong { display: block; margin-bottom: 4px; }
+        .conversion-alert ul { margin: 8px 0 0 20px; }
+        .conversion-alert.error {
+            background: #fff0f0;
+            border-color: #e8b2b2;
+            color: #661b1b;
+        }
+        .conversion-alert.success {
+            background: #eef8f0;
+            border-color: #b8d9bf;
+            color: #184d22;
+        }
+        .fallback-panel {
+            font-family: var(--font-sans);
+            padding: 24px;
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            background: #fff;
+        }
+        .fallback-panel h2 {
+            font-size: 1.2rem;
+            margin-bottom: 10px;
+        }
+        .fallback-panel p {
+            font-size: 0.95rem;
+            color: #555;
+        }
+        .fallback-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin: 16px 0;
+        }
+        .fallback-actions button {
+            padding: 10px 14px;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            background: #333;
+            color: #fff;
+            cursor: pointer;
+            font-family: var(--font-sans);
+        }
+        .fallback-actions button.secondary {
+            background: #f9f9f0;
+            color: #222;
+        }
+        .artifact-preview {
+            white-space: pre-wrap;
+            word-break: break-word;
+            margin-top: 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 12px;
+            max-height: 52vh;
+            overflow: auto;
+            background: #fffff8;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            font-size: 0.82rem;
+            line-height: 1.45;
+        }
+
     </style>
 </head>
 
@@ -923,6 +1006,13 @@
         let currentPaperText = '';
         let chatHistory = [];
         let usedUploadThisSession = false;
+        let processingWarnings = [];
+        window.generatedXML = '';
+        window.rawModelOutput = '';
+        window.conversionWarnings = [];
+        window.selectedExtractedFigures = [];
+        window.figureBlobMap = {};
+        window.conversionArtifacts = createEmptyArtifacts();
 
         // --------------------------------------------------------------- 
         // DOM ELEMENT REFERENCES
@@ -941,6 +1031,443 @@
         const chatInput = document.getElementById('chatInput');
         const sendBtn = document.getElementById('sendBtn');
         const closeChat = document.getElementById('closeChat');
+
+        // --------------------------------------------------------------- 
+        // ROBUST CONVERSION / ARTIFACT HELPERS
+        // ---------------------------------------------------------------
+        const ALLOWED_XML_TAGS = new Set([
+            'PAPER','TITLE','AUTHORS','PUBLICATION_DATE','ABSTRACT','PLAINTEXT',
+            'SECTION','SUBSECTION','SUBSUBSECTION','FULL_LINE_EQUATION','MATH',
+            'THEOREM','PROPOSITION','COROLLARY','PROOF','LEMMA','DEFINITION','ASSUMPTION','EXAMPLE','REMARK',
+            'FOOTNOTE','CITATION','TABLE','CAPTION','FIGURE','IMG','APPENDIX','XREF','PDF',
+            'B','I','EM','STRONG','UL','OL','LI','DL','DT','DD','A','BR','SUP','SUB',
+            'THEAD','TBODY','TFOOT','TR','TH','TD'
+        ]);
+
+        function createEmptyArtifacts() {
+            return {
+                createdAt: new Date().toISOString(),
+                rawModelOutput: '',
+                xmlText: '',
+                repairedXmlText: '',
+                finishReason: '',
+                warnings: [],
+                errors: [],
+                selectedFigures: [],
+                inputFiles: [],
+                model: '',
+                requestedGenerationConfig: {},
+                usageMetadata: {}
+            };
+        }
+
+        function resetConversionArtifacts(preserveWarnings = []) {
+            processingWarnings = preserveWarnings.slice();
+            window.generatedXML = '';
+            window.rawModelOutput = '';
+            window.conversionWarnings = processingWarnings.slice();
+            window.conversionArtifacts = createEmptyArtifacts();
+            window.conversionArtifacts.warnings = preserveWarnings.slice();
+            const btn = document.getElementById('downloadXmlBtn');
+            if (btn) btn.style.display = 'none';
+        }
+
+        function escapeHTML(value) {
+            return String(value ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function escapeAttr(value) {
+            return escapeHTML(value).replace(/`/g, '&#96;');
+        }
+
+        function safeDownloadFilename(name, fallback = 'file.png') {
+            let cleaned = String(name || fallback).trim().replace(/[\\/:*?"<>|\s]+/g, '_');
+            cleaned = cleaned.replace(/^_+|_+$/g, '');
+            if (!cleaned) cleaned = fallback;
+            if (!/\.png$/i.test(cleaned) && /fig/i.test(fallback)) cleaned += '.png';
+            return cleaned;
+        }
+
+        function addWarning(stage, message, detail = {}) {
+            const warning = {
+                stage,
+                message: String(message || 'Unknown warning'),
+                detail,
+                time: new Date().toISOString()
+            };
+            processingWarnings.push(warning);
+            if (window.conversionArtifacts?.warnings) window.conversionArtifacts.warnings.push(warning);
+            window.conversionWarnings = processingWarnings.slice();
+            console.warn(`[${stage}] ${warning.message}`, detail);
+            return warning;
+        }
+
+        function addConversionError(stage, error, detail = {}) {
+            const errObj = {
+                stage,
+                message: error?.message || String(error || 'Unknown error'),
+                detail,
+                time: new Date().toISOString()
+            };
+            if (window.conversionArtifacts?.errors) window.conversionArtifacts.errors.push(errObj);
+            console.error(`[${stage}] ${errObj.message}`, error);
+            return errObj;
+        }
+
+        function setProcessingStatus(message, detail = '') {
+            const note = document.querySelector('#loadingOverlay .loading-note');
+            if (!note) return;
+            note.innerHTML = `
+                <div>${escapeHTML(message)}</div>
+                ${detail ? `<div class="loading-detail">${escapeHTML(detail)}</div>` : ''}
+            `;
+        }
+
+        function revealDownloadButton(label = 'Download XML + Images') {
+            const btn = document.getElementById('downloadXmlBtn');
+            if (btn) {
+                btn.textContent = label;
+                btn.style.display = 'block';
+            }
+        }
+
+        function parseApiError(raw) {
+            try {
+                const parsed = JSON.parse(raw);
+                if (typeof parsed.error === 'string') return parsed.error;
+                if (parsed.error?.message) return parsed.error.message;
+                if (parsed.error) return JSON.stringify(parsed.error);
+                return raw || 'Unknown API error';
+            } catch {
+                return raw || 'Unknown API error';
+            }
+        }
+
+        function stripMarkdownFences(text) {
+            return String(text || '')
+                .trim()
+                .replace(/^```(?:xml)?\s*/i, '')
+                .replace(/```$/i, '')
+                .trim();
+        }
+
+        function repairPaperEnvelope(raw) {
+            const warnings = [];
+            let text = stripMarkdownFences(raw);
+
+            // Some models prepend prose or append notes. Keep the actual PAPER block if it exists.
+            const fullMatch = text.match(/<PAPER\b[\s\S]*?<\/PAPER>/i);
+            if (fullMatch) {
+                if (fullMatch[0].trim() !== text.trim()) {
+                    warnings.push('Extra text outside <PAPER> was removed before rendering.');
+                }
+                return { xmlText: fullMatch[0].trim(), warnings, partial: false };
+            }
+
+            if (/<PAPER\b/i.test(text) && !/<\/PAPER>/i.test(text)) {
+                warnings.push('The model started a <PAPER> block but did not close it. I added </PAPER> so the partial XML can be downloaded and rendered if possible.');
+                return { xmlText: `${text}\n</PAPER>`, warnings, partial: true };
+            }
+
+            if (!/<PAPER\b/i.test(text) && /<\/PAPER>/i.test(text)) {
+                warnings.push('The model returned a closing </PAPER> tag but no opening <PAPER> tag. I repaired the wrapper.');
+                text = text.replace(/<\/PAPER>/ig, '').trim();
+                return { xmlText: `<PAPER>\n${text}\n</PAPER>`, warnings, partial: true };
+            }
+
+            if (!/<PAPER\b/i.test(text) && /<(TITLE|AUTHORS|PUBLICATION_DATE|ABSTRACT|PLAINTEXT|SECTION|SUBSECTION|SUBSUBSECTION|FIGURE|TABLE|FULL_LINE_EQUATION|THEOREM|PROPOSITION|LEMMA|DEFINITION|APPENDIX)\b/i.test(text)) {
+                warnings.push('The model returned paper XML fragments but omitted the <PAPER> wrapper. I wrapped the fragments in <PAPER>...</PAPER>.');
+                return { xmlText: `<PAPER>\n${text}\n</PAPER>`, warnings, partial: true };
+            }
+
+            return {
+                xmlText: null,
+                warnings: ['No recognizable paper XML wrapper or paper XML fragments were found in the model response.'],
+                partial: true
+            };
+        }
+
+        function sanitizeXml(text) {
+            let sanitized = String(text || '');
+
+            const unescapeAllowed = (t) => {
+                t = t.replace(/&lt;\s*([A-Za-z_][\w-]*)\b([\s\S]*?)\/&gt;/g, (m, n, attrs) => {
+                    const name = n.toUpperCase();
+                    if (!ALLOWED_XML_TAGS.has(name)) return m;
+                    const a = attrs.replace(/&amp;/g,'&').replace(/&quot;/g,'"').replace(/&apos;/g,"'").replace(/&lt;/g,'<').replace(/&gt;/g,'>');
+                    return `<${n}${a}/>`;
+                });
+                t = t.replace(/&lt;(\/)?\s*([A-Za-z_][\w-]*)\b([\s\S]*?)&gt;/g, (m, slash, n, attrs) => {
+                    const name = n.toUpperCase();
+                    if (!ALLOWED_XML_TAGS.has(name)) return m;
+                    const a = attrs.replace(/&amp;/g,'&').replace(/&quot;/g,'"').replace(/&apos;/g,"'").replace(/&lt;/g,'<').replace(/&gt;/g,'>');
+                    return `<${slash ? '/' : ''}${n}${a}>`;
+                });
+                return t;
+            };
+
+            sanitized = unescapeAllowed(sanitized);
+            sanitized = sanitized.replace(/&(?!(?:amp|lt|gt|quot|apos|#\d+|#x[\da-fA-F]+);)/g, '&amp;');
+
+            // Preserve only allowlisted tags. Escape all plain-text angle brackets,
+            // including dangling comparisons such as p<.05 that have no closing >.
+            let out = '';
+            let lastIndex = 0;
+            const tagRegex = /<\/?\s*([A-Za-z_][\w-]*)\b[^<>]*\/?>/g;
+            let match;
+            while ((match = tagRegex.exec(sanitized)) !== null) {
+                out += sanitized.slice(lastIndex, match.index).replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                const tag = match[0];
+                const tagName = match[1].toUpperCase();
+                out += ALLOWED_XML_TAGS.has(tagName)
+                    ? tag
+                    : tag.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                lastIndex = match.index + tag.length;
+            }
+            out += sanitized.slice(lastIndex).replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+            // XML requires void-ish tags to be self-closed.
+            out = out.replace(/<IMG\b([^>]*)>/gi, (m, attrs) => /\/\s*$/.test(attrs) ? m : `<IMG${attrs} />`);
+            out = out.replace(/<BR\b([^>]*)>/gi, (m, attrs) => /\/\s*$/.test(attrs) ? m : `<BR${attrs} />`);
+            return out;
+        }
+
+        function getParserErrorText(doc) {
+            const errors = doc.getElementsByTagName('parsererror');
+            if (!errors || !errors.length) return '';
+            return errors[0].textContent.replace(/\s+/g, ' ').trim();
+        }
+
+        function parseXmlOrThrow(xmlText) {
+            const doc = new DOMParser().parseFromString(xmlText, 'application/xml');
+            const parserError = getParserErrorText(doc);
+            if (parserError) {
+                throw new Error(`XML parser error: ${parserError.slice(0, 700)}`);
+            }
+            if (!doc.documentElement || doc.documentElement.nodeName.toUpperCase() !== 'PAPER') {
+                throw new Error('XML parser error: root element is not <PAPER>.');
+            }
+            return doc;
+        }
+
+        function normalizeAndCleanXML(xmlStr) {
+            const warnings = [];
+            const doc = parseXmlOrThrow(xmlStr);
+
+            const targetTags = [
+                'SECTION','SUBSECTION','SUBSUBSECTION','FIGURE','TABLE','FULL_LINE_EQUATION',
+                'THEOREM','PROPOSITION','COROLLARY','PROOF','LEMMA','DEFINITION','ASSUMPTION','EXAMPLE','REMARK','APPENDIX'
+            ];
+            const targets = new Set();
+            targetTags.forEach(tag => {
+                doc.querySelectorAll(tag).forEach(el => {
+                    const id = el.getAttribute('ref');
+                    if (id) targets.add(id);
+                });
+            });
+
+            const isInFootnote = (el) => {
+                let p = el.parentNode;
+                while (p && p.nodeType === 1) {
+                    if (p.nodeName === 'FOOTNOTE') return true;
+                    p = p.parentNode;
+                }
+                return false;
+            };
+            const unwrapKeepChildren = (el) => {
+                const parent = el.parentNode;
+                if (!parent) return;
+                while (el.firstChild) parent.insertBefore(el.firstChild, el);
+                parent.removeChild(el);
+            };
+
+            doc.querySelectorAll('XREF').forEach(x => {
+                const ref = x.getAttribute('ref');
+                if (isInFootnote(x)) {
+                    warnings.push('Removed a cross-reference inside a footnote.');
+                    unwrapKeepChildren(x);
+                } else if (!ref || !targets.has(ref)) {
+                    warnings.push(`Removed a broken cross-reference${ref ? ` to "${ref}"` : ''}.`);
+                    unwrapKeepChildren(x);
+                }
+            });
+
+            let serialized = new XMLSerializer().serializeToString(doc);
+            serialized = serialized.replace(/<IMG([^>]*)><\/IMG>/gi, '<IMG$1 />');
+            serialized = serialized.replace(/<BR([^>]*)><\/BR>/gi, '<BR$1 />');
+            return { xmlText: serialized, xmlDoc: doc, warnings };
+        }
+
+        function prepareXmlForRendering(rawText, options = {}) {
+            const source = options.source || 'conversion';
+            const raw = String(rawText || '');
+            const warnings = [];
+
+            if (source === 'conversion' || !window.conversionArtifacts.rawModelOutput) {
+                window.rawModelOutput = raw;
+                window.conversionArtifacts.rawModelOutput = raw;
+            }
+
+            const repaired = repairPaperEnvelope(raw);
+            warnings.push(...repaired.warnings);
+
+            if (!repaired.xmlText) {
+                warnings.forEach(msg => addWarning('xml-repair', msg, { source }));
+                window.generatedXML = raw;
+                window.conversionArtifacts.xmlText = raw;
+                revealDownloadButton('Download partial output + images');
+                return { xmlText: raw, xmlDoc: null, warnings, renderable: false, partial: true };
+            }
+
+            let xmlText = sanitizeXml(repaired.xmlText);
+
+            // Save the best available XML before strict parsing/normalization.
+            // If parsing fails, users still get XML, raw response, images, and log.
+            window.generatedXML = xmlText;
+            window.conversionArtifacts.xmlText = xmlText;
+            window.conversionArtifacts.repairedXmlText = xmlText;
+            revealDownloadButton(repaired.partial ? 'Download repaired XML + images' : 'Download XML + Images');
+
+            let normalized;
+            try {
+                normalized = normalizeAndCleanXML(xmlText);
+            } catch (err) {
+                const msg = `Saved XML, but rendering validation failed: ${err.message || err}`;
+                warnings.push(msg);
+                warnings.forEach(w => addWarning('xml-prepare', w, { source }));
+                addConversionError('xml-parse', err, { source, savedXmlCharacters: xmlText.length });
+                return { xmlText, xmlDoc: null, warnings, renderable: false, partial: true };
+            }
+
+            xmlText = normalized.xmlText;
+            warnings.push(...normalized.warnings);
+
+            window.generatedXML = xmlText;
+            window.conversionArtifacts.xmlText = xmlText;
+            window.conversionArtifacts.repairedXmlText = xmlText;
+            warnings.forEach(msg => addWarning('xml-prepare', msg, { source }));
+            revealDownloadButton(repaired.partial ? 'Download repaired XML + images' : 'Download XML + Images');
+
+            return { xmlText, xmlDoc: normalized.xmlDoc, warnings, renderable: true, partial: repaired.partial };
+        }
+
+        function extractGeminiText(responseData) {
+            const candidate = responseData?.candidates?.[0];
+            const finishReason = candidate?.finishReason || '';
+            const parts = candidate?.content?.parts || [];
+            const text = parts.map(part => part?.text || '').join('\n').trim();
+            window.conversionArtifacts.finishReason = finishReason;
+
+            if (finishReason && finishReason !== 'STOP') {
+                addWarning('gemini-finish', `Gemini finished with reason: ${finishReason}.`, { finishReason });
+            }
+            if (!text) {
+                const blockReason = responseData?.promptFeedback?.blockReason;
+                const msg = blockReason
+                    ? `Gemini returned no text. Block reason: ${blockReason}.`
+                    : 'Gemini returned no text in the first candidate.';
+                throw new Error(msg);
+            }
+            return { text, finishReason };
+        }
+
+        function inferMimeType(file) {
+            const name = file?.name || '';
+            if (/\.pdf$/i.test(name)) return 'application/pdf';
+            if (/\.pptx$/i.test(name)) return 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
+            if (/\.tex$/i.test(name)) return 'text/plain';
+            if (/\.bib$/i.test(name)) return 'text/plain';
+            return file?.type || 'application/octet-stream';
+        }
+
+        function normalizeSelectedFigureFilenames(figures) {
+            const seen = new Set();
+            figures.forEach((fig, index) => {
+                let filename = safeDownloadFilename(fig.filename, `fig_${index + 1}.png`);
+                if (!/\.png$/i.test(filename)) filename += '.png';
+                let candidate = filename;
+                let suffix = 2;
+                while (seen.has(candidate.toLowerCase())) {
+                    candidate = filename.replace(/\.png$/i, `_${suffix++}.png`);
+                }
+                seen.add(candidate.toLowerCase());
+                fig.filename = candidate;
+            });
+            return figures;
+        }
+
+        function showConversionBanner(warnings = []) {
+            const unique = [...new Set((warnings || []).filter(Boolean))];
+            if (!unique.length && !(window.conversionArtifacts?.finishReason && window.conversionArtifacts.finishReason !== 'STOP')) return;
+            const finish = window.conversionArtifacts?.finishReason || '';
+            const items = unique.slice(0, 8).map(w => `<li>${escapeHTML(w)}</li>`).join('');
+            const extra = unique.length > 8 ? `<li>${escapeHTML(unique.length - 8)} more warning(s) are included in conversion-log.json.</li>` : '';
+            const banner = document.createElement('div');
+            banner.className = 'conversion-alert';
+            banner.innerHTML = `
+                <strong>Converted with warnings.</strong>
+                <div>The rendered paper is shown below, and the download includes the XML, selected images, raw model response, and a conversion log.</div>
+                ${finish && finish !== 'STOP' ? `<div>Gemini finish reason: ${escapeHTML(finish)}.</div>` : ''}
+                ${items || extra ? `<ul>${items}${extra}</ul>` : ''}
+            `;
+            mainContent.insertBefore(banner, mainContent.firstChild);
+        }
+
+        function downloadBlob(blob, filename) {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(url);
+        }
+
+        async function downloadConversionArtifacts() {
+            const artifacts = window.conversionArtifacts || createEmptyArtifacts();
+            const xml = window.generatedXML || artifacts.xmlText || artifacts.repairedXmlText || '';
+            const raw = artifacts.rawModelOutput || window.rawModelOutput || '';
+            const selected = (artifacts.selectedFigures?.length ? artifacts.selectedFigures : window.selectedExtractedFigures || []).filter(f => f && f.blob);
+            const warnings = artifacts.warnings || [];
+            const errors = artifacts.errors || [];
+            const log = {
+                createdAt: artifacts.createdAt || new Date().toISOString(),
+                finishReason: artifacts.finishReason || '',
+                xmlCharacters: xml.length,
+                rawModelOutputCharacters: raw.length,
+                selectedImages: selected.map(f => ({ filename: f.filename, page: f.page, width: f.width, height: f.height, title: f.title || '' })),
+                inputFiles: artifacts.inputFiles || [],
+                model: artifacts.model || '',
+                requestedGenerationConfig: artifacts.requestedGenerationConfig || {},
+                usageMetadata: artifacts.usageMetadata || {},
+                warnings,
+                errors
+            };
+
+            if (typeof JSZip === 'undefined') {
+                if (xml) return downloadBlob(new Blob([xml], { type: 'text/xml' }), 'paper.xml');
+                if (raw) return downloadBlob(new Blob([raw], { type: 'text/plain' }), 'raw_model_response.txt');
+                return downloadBlob(new Blob([JSON.stringify(log, null, 2)], { type: 'application/json' }), 'conversion-log.json');
+            }
+
+            const zip = new JSZip();
+            if (xml) zip.file('paper.xml', xml);
+            if (raw) zip.file('raw_model_response.txt', raw);
+            zip.file('conversion-log.json', JSON.stringify(log, null, 2));
+            selected.forEach((fig, idx) => {
+                const filename = safeDownloadFilename(fig.filename, `fig_${idx + 1}.png`);
+                zip.file(filename, fig.blob);
+            });
+            const content = await zip.generateAsync({ type: 'blob' });
+            downloadBlob(content, 'paper_conversion_artifacts.zip');
+        }
+
 
         // --------------------------------------------------------------- 
         // INTEGRATED FIGURE EXTRACTION (from ExtractFigures)
@@ -1151,13 +1678,14 @@
                 const item = document.createElement('div');
                 item.className = 'image-item' + (fig.selected ? ' selected' : '');
                 item.dataset.index = index;
+                const pageInfo = fig.page ? `Page: ${escapeHTML(fig.page)} • ` : '';
                 item.innerHTML = `
                   <input type="checkbox" class="image-checkbox" ${fig.selected ? 'checked' : ''}>
-                  <div class="figure-title">${fig.title || 'Figure'}</div>
-                  <img src="${fig.url}" alt="Figure ${index + 1}" class="image-preview">
-                  <div class="image-info">${fig.page ? `Page: ${fig.page} • ` : ''}${fig.width}×${fig.height}px</div>
-                  <input class="filename-input" value="${fig.filename}">
-                  ${fig.caption ? `<div class="caption">${fig.caption}</div>` : ''}
+                  <div class="figure-title">${escapeHTML(fig.title || 'Figure')}</div>
+                  <img src="${escapeAttr(fig.url)}" alt="Figure ${index + 1}" class="image-preview">
+                  <div class="image-info">${pageInfo}${escapeHTML(fig.width)}×${escapeHTML(fig.height)}px</div>
+                  <input class="filename-input" value="${escapeAttr(fig.filename)}">
+                  ${fig.caption ? `<div class="caption">${escapeHTML(fig.caption)}</div>` : ''}
                 `;
                 fx.imageGrid.appendChild(item);
             });
@@ -1310,6 +1838,7 @@
                     if (btn && !btn.disabled) btn.click();
                 }
             } catch (err) {
+                addWarning('pptx-extraction', err.message || String(err), { file: file?.name || '' });
                 fxError(`Error processing PPTX file: ${err.message}`);
             } finally {
                 setTimeout(()=> fx.progress.style.display='none', 500);
@@ -1329,6 +1858,7 @@
                 const minSizePercent = 0.02; // 2% of page area
                 const skipTables = true;
                 for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
+                    try {
                     updateFxProgress(((pageNum - 1) / totalPages) * 100);
                     fxStatus(`Processing page ${pageNum} of ${totalPages}...`);
                     const page = await pdf.getPage(pageNum);
@@ -1433,7 +1963,9 @@
                 if (cropW <= 1 || cropH <= 1) continue;
                 // Defer trimming until after merging (match ExtractFigures)
                 initialCrops.push({ x: minX, y: minY, w: cropW, h: cropH });
-                    } catch {}
+                    } catch (paintErr) {
+                        addWarning('pdf-raster-image', paintErr.message || String(paintErr), { page: pageNum });
+                    }
                 }
                 // Vector figures (Form XObjects)
                 for (const form of formPaints) {
@@ -1468,7 +2000,9 @@
                         let cropH = Math.max(1, maxY - minY);
                         if (cropW <= 1 || cropH <= 1) continue;
                         initialCrops.push({ x: minX, y: minY, w: cropW, h: cropH });
-                    } catch {}
+                    } catch (formErr) {
+                        addWarning('pdf-vector-form', formErr.message || String(formErr), { page: pageNum });
+                    }
                 }
                     if (initialCrops.length === 0) continue;
                 const mergedCrops = mergeImageBoxes(initialCrops, textBoxes);
@@ -1494,11 +2028,16 @@
                         filename: suggestFilename(title, pageNum), title, caption, selected: true
                     });
                 }
+                    } catch (pageErr) {
+                        addWarning('pdf-page', `Skipped page ${pageNum}: ${pageErr.message || pageErr}`, { page: pageNum });
+                        continue;
+                    }
                 }
                 updateFxProgress(100);
                 attachFxListeners();
                 displayFxResults();
             } catch (err) {
+                addWarning('pdf-extraction', err.message || String(err), { file: file?.name || '' });
                 fxError(`Error processing PDF file: ${err.message}`);
             } finally {
                 setTimeout(()=> fx.progress.style.display='none', 500);
@@ -1671,44 +2210,41 @@ async function ensureLocalKey() {
   });
 }
 
-// ADD this helper near the top of your script:
 async function postGemini(payload) {
-  // 1) Try server-side proxy (keeps key private in production)
+  // 1) Try server-side proxy first so no key is exposed in production.
   try {
     const res = await fetch('gemini-proxy.php', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     });
-    if (res.ok) return await res.json();
-
-    // If proxy returns non-JSON error, surface it
     const raw = await res.text();
-    try { throw new Error(JSON.parse(raw).error || raw); } catch { throw new Error(raw); }
+    if (res.ok) {
+      try { return JSON.parse(raw); }
+      catch { throw new Error('Proxy returned non-JSON from Gemini:\n' + raw.slice(0, 500)); }
+    }
+    throw new Error(parseApiError(raw));
   } catch (err) {
-    // 2) If we're local, fall back to direct Google call using a prompted key
+    // 2) If the proxy is unavailable locally, fall back to direct Google call using a prompted key.
     const host = location.hostname;
     const isLocal = host === 'localhost' || host === '127.0.0.1';
     if (!isLocal) throw err;
 
     const key = await ensureLocalKey();
-    const model = payload.model || 'gemini-3.0-flash';
+    const model = payload.model || 'gemini-3-flash-preview';
     const direct = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(key)}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...payload, model: undefined }) // Google URL carries the model
+        body: JSON.stringify({ ...payload, model: undefined })
       }
     );
 
     const raw = await direct.text();
-    if (!direct.ok) {
-      try { throw new Error(JSON.parse(raw).error?.message || raw); }
-      catch { throw new Error(raw); }
-    }
+    if (!direct.ok) throw new Error(parseApiError(raw));
     try { return JSON.parse(raw); }
-    catch { throw new Error('Non-JSON from Gemini:\n' + raw.slice(0, 300)); }
+    catch { throw new Error('Non-JSON from Gemini:\n' + raw.slice(0, 500)); }
   }
 }
 
@@ -1718,10 +2254,14 @@ async function postGemini(payload) {
         // ---------------------------------------------------------------
         function extractPaperText() {
             const xml = currentPaperXML;
+            if (!xml?.documentElement) {
+                currentPaperText = window.generatedXML || window.rawModelOutput || '';
+                return;
+            }
             let text = '';
             
             const title = xml.querySelector('TITLE')?.textContent || '';
-            document.getElementById('toc-title').textContent = title;
+            document.getElementById('toc-title').textContent = title || 'Contents';
             const authors = xml.querySelector('AUTHORS')?.textContent || '';
             const abstract = xml.querySelector('ABSTRACT')?.textContent || '';
             
@@ -1760,110 +2300,43 @@ async function postGemini(payload) {
                     if (!response.ok) throw new Error(`Failed to fetch paper data from ${dataUrl}`);
                     let xmlText = await response.text();
                     
-                    // Clean up potential XML issues before parsing (allowlist sanitizer)
-                    // Allow core XML tags plus safe inline/HTML formatting tags used in content
-                    const allowedTags = new Set([
-                      'PAPER','TITLE','AUTHORS','PUBLICATION_DATE','ABSTRACT','PLAINTEXT',
-                      'SECTION','SUBSECTION','SUBSUBSECTION','FULL_LINE_EQUATION','MATH',
-                      'THEOREM','PROPOSITION','COROLLARY','PROOF','LEMMA','DEFINITION','ASSUMPTION','EXAMPLE',
-                      'FOOTNOTE','CITATION','TABLE','CAPTION','FIGURE','IMG','APPENDIX','XREF','PDF',
-                      // Common inline/HTML tags that may appear in content
-                      'B','I','EM','STRONG','UL','OL','LI','DL','DT','DD','A','BR','SUP','SUB',
-                      // HTML table markup (in case model emits native HTML tables)
-                      'THEAD','TBODY','TFOOT','TR','TH','TD'
-                    ]);
-                    function sanitizeXml(text) {
-                      // 0) turn escaped allowed tags like &lt;a ...&gt; back into real tags
-                      const unescapeAllowed = (t) => {
-                        // self-closing first: &lt;TAG ... /&gt;
-                        t = t.replace(/&lt;\s*([A-Za-z_][\w-]*)\b([\s\S]*?)\/&gt;/g, (m, n, attrs) => {
-                          const name = n.toUpperCase();
-                          if (!allowedTags.has(name)) return m; // leave escaped
-                          const a = attrs.replace(/&amp;/g,'&').replace(/&quot;/g,'"').replace(/&apos;/g,"'").replace(/&lt;/g,'<').replace(/&gt;/g,'>');
-                          return `<${n}${a}/>`;
+                    resetConversionArtifacts();
+                    setProcessingStatus('Loading XML paper data...', 'Cleaning references and validating the XML.');
+                    const prepared = prepareXmlForRendering(xmlText, { source: 'data-url' });
+                    xmlText = prepared.xmlText;
+
+                    if (!prepared.renderable) {
+                        loadingOverlay.style.display = 'none';
+                        showXmlFallback(xmlText, {
+                            message: 'The XML file loaded, but it did not contain a renderable <PAPER> document.',
+                            warnings: prepared.warnings
                         });
-                        // opening/closing: &lt;/TAG ...&gt; or &lt;TAG ...&gt;
-                        t = t.replace(/&lt;(\/)?\s*([A-Za-z_][\w-]*)\b([\s\S]*?)&gt;/g, (m, slash, n, attrs) => {
-                          const name = n.toUpperCase();
-                          if (!allowedTags.has(name)) return m; // leave escaped
-                          const a = attrs.replace(/&amp;/g,'&').replace(/&quot;/g,'"').replace(/&apos;/g,"'").replace(/&lt;/g,'<').replace(/&gt;/g,'>');
-                          return `<${slash ? '/' : ''}${n}${a}>`;
-                        });
-                        return t;
-                      };
-                      text = unescapeAllowed(text);
-                      // 1) escape stray ampersands
-                      text = text.replace(/&(?!(?:amp|lt|gt|quot|apos|#\d+|#x[\da-fA-F]+);)/g, '&amp;');
-                      // 2) keep only allowed tags; escape others and angle brackets in plain text
-                      return text.replace(/(<[^>]+>)|([^<]+)/g, (match, tag, plain) => {
-                        if (tag) {
-                          const m = tag.match(/^<\/?\s*([A-Za-z_][\w-]*)/);
-                          const name = m ? m[1].toUpperCase() : '';
-                          if (!allowedTags.has(name)) return tag.replace(/</g,'&lt;').replace(/>/g,'&gt;');
-                          return tag;
+                    } else {
+                        try {
+                            currentPaperXML = prepared.xmlDoc || parseXmlOrThrow(xmlText);
+                            extractPaperText();
+                            loadingOverlay.style.display = 'none';
+                            renderPaperFromXML();
+                            buildTOCFromXML();
+                            showConversionBanner(prepared.warnings);
+                        } catch (e) {
+                            addConversionError('render', e, { source: 'data-url' });
+                            loadingOverlay.style.display = 'none';
+                            showXmlFallback(xmlText, {
+                                message: 'The XML loaded and was saved, but the rendered view failed.',
+                                error: e,
+                                warnings: prepared.warnings
+                            });
                         }
-                        return plain.replace(/</g, '&lt;').replace(/>/g, '&gt;');
-                      });
-                    }
-                    xmlText = sanitizeXml(xmlText);
-
-                    // Normalize and clean references in the XML so downloads are correct
-                    function normalizeAndCleanXML(xmlStr) {
-                      const parser = new DOMParser();
-                      let doc = parser.parseFromString(xmlStr, 'application/xml');
-                      // Build set of valid targets by @ref
-                      const targetTags = [
-                        'SECTION','SUBSECTION','SUBSUBSECTION','FIGURE','TABLE','FULL_LINE_EQUATION',
-                        'THEOREM','PROPOSITION','COROLLARY','PROOF','LEMMA','DEFINITION','ASSUMPTION','EXAMPLE'
-                      ];
-                      const targets = new Set();
-                      targetTags.forEach(tag => {
-                        doc.querySelectorAll(tag).forEach(el => {
-                          const id = el.getAttribute('ref');
-                          if (id) targets.add(id);
-                        });
-                      });
-                      const isInFootnote = (el) => {
-                        let p = el.parentNode; const needle = 'FOOTNOTE';
-                        while (p && p.nodeType === 1) { if (p.nodeName === needle) return true; p = p.parentNode; }
-                        return false;
-                      };
-                      const unwrapKeepChildren = (el) => {
-                        const parent = el.parentNode; if (!parent) return;
-                        while (el.firstChild) parent.insertBefore(el.firstChild, el);
-                        parent.removeChild(el);
-                      };
-                      // Remove/unwrap bad refs and all refs inside footnotes
-                      doc.querySelectorAll('XREF').forEach(x => {
-                        const ref = x.getAttribute('ref');
-                        if (isInFootnote(x) || !ref || !targets.has(ref)) unwrapKeepChildren(x);
-                      });
-                      // Serialize back
-                      const ser = new XMLSerializer().serializeToString(doc);
-                      return { xmlText: ser, xmlDoc: doc };
-                    }
-                    const normalized = normalizeAndCleanXML(xmlText);
-                    xmlText = normalized.xmlText;
-                    
-                    window.generatedXML = xmlText;
-                    if (usedUploadThisSession) {
-                        document.getElementById('downloadXmlBtn').style.display = 'block';
-                    }
-
-                    try {
-                        currentPaperXML = normalized.xmlDoc || new DOMParser().parseFromString(xmlText, 'application/xml');
-                        extractPaperText();
-                        loadingOverlay.style.display = 'none';
-                        renderPaperFromXML();
-                        buildTOCFromXML();
-                    } catch (e) {
-                        loadingOverlay.style.display = 'none';
-                        showXmlFallback(xmlText);
                     }
                 } catch (error) {
+                    addConversionError('data-url', error, { dataUrl });
                     console.error('Error loading paper data from URL:', error);
                     loadingOverlay.style.display = 'none';
-                    showXmlFallback(window.generatedXML || '');
+                    showXmlFallback(window.generatedXML || window.rawModelOutput || '', {
+                        message: 'The XML file could not be loaded or prepared, but any available output has been preserved.',
+                        error
+                    });
                 }
                 return;
             }
@@ -1881,7 +2354,8 @@ async function postGemini(payload) {
             fileInput.addEventListener('change', async (e) => {
                 const files = Array.from(e.target.files);
                 if (files.length > 0) {
-                    uploadStatus.innerHTML = `<strong>Selected:</strong> ${files.map(f => f.name).join(', ')}<br>Click "Convert Paper" to proceed.`;
+                    resetConversionArtifacts();
+                    uploadStatus.innerHTML = `<strong>Selected:</strong> ${files.map(f => escapeHTML(f.name)).join(', ')}<br>Click "Convert Paper" to proceed.`;
                     convertBtn.style.display = 'block';
                     // Trigger figure extraction for PDF/PPTX
                     try {
@@ -1896,8 +2370,12 @@ async function postGemini(payload) {
                             const btn = document.getElementById('convertBtn');
                             if (btn && !btn.disabled) btn.click();
                         }
-                    } catch (err) { console.error('Figure extraction error:', err); }
+                    } catch (err) {
+                        addWarning('figure-extraction', err.message || String(err));
+                        console.error('Figure extraction error:', err);
+                    }
                 } else {
+                    resetConversionArtifacts();
                     uploadStatus.textContent = '';
                     convertBtn.style.display = 'none';
                     resetFigureUI();
@@ -1913,8 +2391,11 @@ async function postGemini(payload) {
                 }
 
                 // Update UI to show processing state
+                const extractionWarnings = processingWarnings.filter(w => ['figure-extraction','pdf-extraction','pdf-page','pdf-raster-image','pdf-vector-form','pptx-extraction'].includes(w.stage));
+                resetConversionArtifacts(extractionWarnings);
                 uploadModal.style.display = 'none';
                 loadingOverlay.style.display = 'flex'; // Show spinner
+                setProcessingStatus('Reading uploaded files...', 'Preparing the paper and any selected figures for conversion.');
                 convertBtn.disabled = true;
 
                 // Helper function to read a file as a base64 string
@@ -1927,7 +2408,7 @@ async function postGemini(payload) {
                     return {
                         inlineData: {
                             data: await base64EncodedDataPromise,
-                            mimeType: file.type
+                            mimeType: inferMimeType(file)
                         },
                     };
                 };
@@ -1936,12 +2417,16 @@ async function postGemini(payload) {
                     
                     // 2. Prepare the request for the Gemini API
                     const files = Array.from(fileInput.files);
+                    window.conversionArtifacts.inputFiles = files.map(f => ({ name: f.name, type: inferMimeType(f), size: f.size }));
+                    setProcessingStatus('Reading uploaded files...', `${files.length} file(s) selected.`);
                     const fileParts = await Promise.all(files.map(fileToGenerativePart));
                     // Prepare selected images (if any)
-                    const selectedImages = extractedFigures.filter(f => f.selected);
+                    const selectedImages = normalizeSelectedFigureFilenames(extractedFigures.filter(f => f.selected));
+                    setProcessingStatus('Preparing extracted figures...', selectedImages.length ? `${selectedImages.length} selected figure(s) will be included.` : 'No extracted figures were selected.');
                     // Map for local rendering of images by filename
                     window.figureBlobMap = Object.fromEntries(selectedImages.map(f => [f.filename, f.url]));
                     window.selectedExtractedFigures = selectedImages;
+                    window.conversionArtifacts.selectedFigures = selectedImages;
                     const toBase64 = (blob) => new Promise((resolve, reject) => { const r=new FileReader(); r.onloadend=()=>resolve(r.result.split(',')[1]); r.onerror=reject; r.readAsDataURL(blob); });
                     const imageParts = [];
                     for (const fig of selectedImages) {
@@ -1951,127 +2436,66 @@ async function postGemini(payload) {
                     }
                     const imagesInstruction = selectedImages.length ? `\n\nFigures: I am including figure image files. Use these exact filenames in <IMG src> where appropriate, and reference them in order of appearance in the text: ${selectedImages.map(f=>f.filename).join(', ')}.` : '';
 
+                    setProcessingStatus('Sending paper to Gemini...', 'Gemini 3 thinking is capped at medium and temperature is 1. Raw output is saved before validation.');
+const conversionModel = 'gemini-3-flash-preview';
+const conversionGenerationConfig = {
+  // Gemini 3 defaults to high/dynamic thinking. For XML extraction, cap it.
+  // This preserves enough reasoning for layout/structure without burning the
+  // output budget before the XML is complete.
+  temperature: 1,
+  maxOutputTokens: 65000,
+  thinkingConfig: { thinkingLevel: 'medium' }
+};
+window.conversionArtifacts.model = conversionModel;
+window.conversionArtifacts.requestedGenerationConfig = conversionGenerationConfig;
 const responseData = await postGemini({
-  model: 'gemini-3.0-flash',
+  model: conversionModel,
   contents: [{ parts: [{ text: CONVERSION_PROMPT + imagesInstruction }, ...fileParts, ...imageParts] }],
-  generationConfig: { temperature: 0.1, maxOutputTokens: 65000 }
+  generationConfig: conversionGenerationConfig
 });
+window.conversionArtifacts.usageMetadata = responseData?.usageMetadata || {};
+if (window.conversionArtifacts.usageMetadata?.thoughtsTokenCount) {
+  addWarning('gemini-usage', 'Gemini reported internal thinking tokens in usage metadata.', {
+    thoughtsTokenCount: window.conversionArtifacts.usageMetadata.thoughtsTokenCount,
+    candidatesTokenCount: window.conversionArtifacts.usageMetadata.candidatesTokenCount,
+    totalTokenCount: window.conversionArtifacts.usageMetadata.totalTokenCount
+  });
+}
                     console.log('Received response from Gemini conversion');
-                    
-                    // 4. Extract and clean the XML from the response
-                    let xmlText = responseData.candidates[0].content.parts[0].text;
-                    // Remove markdown code block fences if the model adds them
-                    xmlText = xmlText.trim().replace(/^```xml\n?/, '').replace(/\n?```$/, '');
+                    setProcessingStatus('Received model output. Validating XML...', 'Saving the raw response first so nothing is lost if validation fails.');
 
-                    // Guard against half-finished outputs
-                    if (!xmlText.includes('<PAPER') || !xmlText.includes('</PAPER>')) {
-                      throw new Error('Model output appears incomplete (missing <PAPER> wrapper). Please retry conversion.');
-                    }
+                    const modelOutput = extractGeminiText(responseData);
+                    let xmlText = modelOutput.text;
+                    window.rawModelOutput = xmlText;
+                    window.conversionArtifacts.rawModelOutput = xmlText;
+                    window.conversionArtifacts.finishReason = modelOutput.finishReason;
 
-                    // Sanitize before parsing using allowlist of tags
-                    const allowedTags = new Set([
-                      'PAPER','TITLE','AUTHORS','PUBLICATION_DATE','ABSTRACT','PLAINTEXT',
-                      'SECTION','SUBSECTION','SUBSUBSECTION','FULL_LINE_EQUATION','MATH',
-                      'THEOREM','PROPOSITION','COROLLARY','PROOF','LEMMA','DEFINITION','ASSUMPTION','EXAMPLE',
-                      'FOOTNOTE','CITATION','TABLE','CAPTION','FIGURE','IMG','APPENDIX','XREF','PDF',
-                      // Common inline/HTML tags that may appear in content
-                      'B','I','EM','STRONG','UL','OL','LI','DL','DT','DD','A','BR','SUP','SUB',
-                      // HTML table markup (in case model emits native HTML tables)
-                      'THEAD','TBODY','TFOOT','TR','TH','TD'
-                    ]);
-                    function sanitizeXml(text) {
-                      // 0) turn escaped allowed tags like &lt;a ...&gt; back into real tags
-                      const unescapeAllowed = (t) => {
-                        // self-closing first
-                        t = t.replace(/&lt;\s*([A-Za-z_][\w-]*)\b([\s\S]*?)\/&gt;/g, (m, n, attrs) => {
-                          const name = n.toUpperCase();
-                          if (!allowedTags.has(name)) return m;
-                          const a = attrs.replace(/&amp;/g,'&').replace(/&quot;/g,'"').replace(/&apos;/g,"'").replace(/&lt;/g,'<').replace(/&gt;/g,'>');
-                          return `<${n}${a}/>`;
+                    const prepared = prepareXmlForRendering(xmlText, { source: 'conversion' });
+                    xmlText = prepared.xmlText;
+
+                    if (!prepared.renderable) {
+                        showXmlFallback(xmlText, {
+                            message: 'The conversion produced model output, but it was not recognizable paper XML.',
+                            warnings: prepared.warnings
                         });
-                        // opening/closing
-                        t = t.replace(/&lt;(\/)?\s*([A-Za-z_][\w-]*)\b([\s\S]*?)&gt;/g, (m, slash, n, attrs) => {
-                          const name = n.toUpperCase();
-                          if (!allowedTags.has(name)) return m;
-                          const a = attrs.replace(/&amp;/g,'&').replace(/&quot;/g,'"').replace(/&apos;/g,"'").replace(/&lt;/g,'<').replace(/&gt;/g,'>');
-                          return `<${slash ? '/' : ''}${n}${a}>`;
-                        });
-                        return t;
-                      };
-                      text = unescapeAllowed(text);
-                      // 1) escape stray ampersands
-                      text = text.replace(/&(?!(?:amp|lt|gt|quot|apos|#\d+|#x[\da-fA-F]+);)/g, '&amp;');
-                      // 2) escape angle brackets in non-tag text; only keep allowed tags
-                      return text.replace(/(<[^>]+>)|([^<]+)/g, (match, tag, plain) => {
-                        if (tag) {
-                          const m = tag.match(/^<\/?\s*([A-Za-z_][\w-]*)/);
-                          const name = m ? m[1].toUpperCase() : '';
-                          if (!allowedTags.has(name)) {
-                            // not an allowed tag: escape entire token
-                            return tag.replace(/</g,'&lt;').replace(/>/g,'&gt;');
-                          }
-                          return tag; // keep allowed tag as-is
-                        }
-                        // escape < and > in plain text (fixes things like p<.00001)
-                        return plain.replace(/</g, '&lt;').replace(/>/g, '&gt;');
-                      });
-                    }
-                    xmlText = sanitizeXml(xmlText);
-
-                    // Normalize and clean references in the XML so downloads are correct
-                    function normalizeAndCleanXML(xmlStr) {
-                      const parser = new DOMParser();
-                      let doc = parser.parseFromString(xmlStr, 'application/xml');
-                      // Build set of valid targets by @ref
-                      const targetTags = [
-                        'SECTION','SUBSECTION','SUBSUBSECTION','FIGURE','TABLE','FULL_LINE_EQUATION',
-                        'THEOREM','PROPOSITION','COROLLARY','PROOF','LEMMA','DEFINITION','ASSUMPTION','EXAMPLE'
-                      ];
-                      const targets = new Set();
-                      targetTags.forEach(tag => {
-                        doc.querySelectorAll(tag).forEach(el => {
-                          const id = el.getAttribute('ref');
-                          if (id) targets.add(id);
-                        });
-                      });
-                      const isInFootnote = (el) => {
-                        let p = el.parentNode; const needle = 'FOOTNOTE';
-                        while (p && p.nodeType === 1) { if (p.nodeName === needle) return true; p = p.parentNode; }
-                        return false;
-                      };
-                      const unwrapKeepChildren = (el) => {
-                        const parent = el.parentNode; if (!parent) return;
-                        while (el.firstChild) parent.insertBefore(el.firstChild, el);
-                        parent.removeChild(el);
-                      };
-                      // Remove/unwrap bad refs and all refs inside footnotes
-                      doc.querySelectorAll('XREF').forEach(x => {
-                        const ref = x.getAttribute('ref');
-                        if (isInFootnote(x) || !ref || !targets.has(ref)) unwrapKeepChildren(x);
-                      });
-                      // Serialize back
-                      const ser = new XMLSerializer().serializeToString(doc);
-                      return { xmlText: ser, xmlDoc: doc };
-                    }
-                    const normalized = normalizeAndCleanXML(xmlText);
-                    xmlText = normalized.xmlText;
-
-                    window.generatedXML = xmlText; // Store for potential download
-                    if (usedUploadThisSession) {
-                        document.getElementById('downloadXmlBtn').style.display = 'block';
+                        return;
                     }
 
-                    // 5. Parse and render the generated XML
-                    currentPaperXML = normalized.xmlDoc || new DOMParser().parseFromString(xmlText, "application/xml");
-                    
+                    setProcessingStatus('Rendering paper...', 'The XML and selected images are already available for download.');
+                    currentPaperXML = prepared.xmlDoc || parseXmlOrThrow(xmlText);
                     extractPaperText();
                     renderPaperFromXML();
                     buildTOCFromXML();
+                    showConversionBanner(prepared.warnings);
 
                 } catch (err) {
+                    addConversionError('conversion', err, { hasRawOutput: !!window.rawModelOutput, hasXml: !!window.generatedXML });
                     console.error('❌ Conversion failed:', err);
-                    // still allow download + show raw if any XML was produced
-                    showXmlFallback(window.generatedXML || '');
+                    // still allow download + show raw/model output/images if anything was produced
+                    showXmlFallback(window.generatedXML || window.rawModelOutput || '', {
+                        message: 'Conversion stopped before the rendered view could be completed, but any model output and extracted images have been preserved.',
+                        error: err
+                    });
                 } finally {
                     // 6. Reset UI
                     loadingOverlay.style.display = 'none';
@@ -2086,7 +2510,7 @@ const responseData = await postGemini({
         function transformXMLContent(xmlStr) {
             /* 1. inline / display math ------------------------------------------ */
             xmlStr = xmlStr.replace(
-                /<FULL_LINE_EQUATION[^>]*ref="([^"]+)"[^>]*>\s*(?:<MATH>([\s\S]*?)<\/MATH>|([\s\S]*?))\s*<\/FULL_LINE_EQUATION>/g,
+                /<FULL_LINE_EQUATION[^>]*ref="([^"]+)"[^>]*>\s*(?:<MATH>([\s\S]*?)<\/MATH>|([\s\S]*?))\s*<\/FULL_LINE_EQUATION>/gi,
                 (_, eqId, innerWithTag, innerRaw) => {
                     const tex = (innerWithTag || innerRaw).trim();
                     return `<div class="equation-display" id="${eqId}">$$${tex}$$</div>`;
@@ -2094,25 +2518,25 @@ const responseData = await postGemini({
             );
 
             xmlStr = xmlStr.replace(
-                /<MATH>([\s\S]*?)<\/MATH>/g,
+                /<MATH>([\s\S]*?)<\/MATH>/gi,
                 (_, tex) => `\\(${tex}\\)`
             );
 
             // Preserve inline formatting and list tags (<b>, <i>, <em>, <strong>, <ul>, <ol>, <li>)
 
             /* 2. foot-notes (as popups, not a list) ----------------------------- */
-            xmlStr = xmlStr.replace(/<FOOTNOTE[^>]*>([\s\S]*?)<\/FOOTNOTE>/g,
+            xmlStr = xmlStr.replace(/<FOOTNOTE[^>]*>([\s\S]*?)<\/FOOTNOTE>/gi,
                 (_, note) => {
                     footnoteCounter++;
                     // Remove CITATION tags and all their attributes, keep only inner text
-                    let cleanNote = note.replace(/<CITATION[^>]*?>([\s\S]*?)<\/CITATION>/g, '$1');
+                    let cleanNote = note.replace(/<CITATION[^>]*?>([\s\S]*?)<\/CITATION>/gi, '$1');
                     const processedNote = cleanNote.replace(/</g, '&lt;').replace(/>/g, '&gt;');
                     return `<sup class="footnote-ref" data-footnote-content="${encodeURIComponent(processedNote)}">${footnoteCounter}</sup>`;
                 });
 
             /* 3. citations ------------------------------------------------------- */
             xmlStr = xmlStr.replace(
-                /<CITATION([^>]*)>([\s\S]*?)<\/CITATION>/g,
+                /<CITATION([^>]*)>([\s\S]*?)<\/CITATION>/gi,
                 (_, attrStr, visibleText) => {
                     const attrs = {};
                     attrStr.replace(/(\w+)="([^"]*)"/g, (_, key, val) => {
@@ -2134,7 +2558,7 @@ const responseData = await postGemini({
             );
 
             // props
-            xmlStr = xmlStr.replace(/<(THEOREM|PROOF|PROPOSITION|LEMMA|DEFINITION|ASSUMPTION|REMARK|COROLLARY|EXAMPLE)([^>]*)>([\s\S]*?)<\/\1>/g,
+            xmlStr = xmlStr.replace(/<(THEOREM|PROOF|PROPOSITION|LEMMA|DEFINITION|ASSUMPTION|REMARK|COROLLARY|EXAMPLE)([^>]*)>([\s\S]*?)<\/\1>/gi,
                 (_, tagName, attrs, content) => {
                     const ref = attrs.match(/ref="([^"]+)"/)?.[1] || '';
                     const className = tagName.toLowerCase();
@@ -2175,7 +2599,7 @@ const responseData = await postGemini({
                 });
 
             // tables
-            xmlStr = xmlStr.replace(/<TABLE([^>]*)>([\s\S]*?)<\/TABLE>/g,
+            xmlStr = xmlStr.replace(/<TABLE([^>]*)>([\s\S]*?)<\/TABLE>/gi,
                 (_, attrs, content) => {
                     const ref = attrs.match(/ref="([^"]+)"/)?.[1] || '';
                     let caption = '';
@@ -2206,7 +2630,7 @@ const responseData = await postGemini({
                 });
 
             // crossrefs
-            xmlStr = xmlStr.replace(/<XREF[^>]*ref="([^"]+)"[^>]*>([\s\S]*?)<\/XREF>/g,
+            xmlStr = xmlStr.replace(/<XREF[^>]*ref="([^"]+)"[^>]*>([\s\S]*?)<\/XREF>/gi,
                 (_, ref, text) => `<a href="#${ref}" class="xref">${text}</a>`);
 
             return xmlStr;
@@ -2222,19 +2646,19 @@ const responseData = await postGemini({
             const sb = document.getElementById('sidebar');
             if (sb) sb.style.display = 'block';
 
-            // 1. Render the paper's header
-            const title = xml.querySelector('TITLE').textContent;
-            const authors = xml.querySelector('AUTHORS').textContent;
-            const pubDate = xml.querySelector('PUBLICATION_DATE')?.textContent || '';
-            const pdfUrl = xml.querySelector('PDF')?.textContent || '';
+            // 1. Render the paper's header. Missing metadata should not kill partial rendering.
+            const title = xml.querySelector('TITLE')?.textContent?.trim() || 'Untitled paper';
+            const authors = xml.querySelector('AUTHORS')?.textContent?.trim() || '';
+            const pubDate = xml.querySelector('PUBLICATION_DATE')?.textContent?.trim() || '';
+            const pdfUrl = xml.querySelector('PDF')?.textContent?.trim() || '';
 
             let finalHtml = `
                 <div class="paper-header">
-                    <h1 class="paper-title">${title}</h1>
-                    <div class="paper-authors">${authors}</div>
+                    <h1 class="paper-title">${escapeHTML(title)}</h1>
+                    ${authors ? `<div class="paper-authors">${escapeHTML(authors)}</div>` : ''}
                     <div class="paper-metadata">
-                        <span>${pubDate}</span>
-                        ${pdfUrl ? `<a href="${pdfUrl}" style="text-decoration: none;" target="_blank">[PDF]</a>` : ''}
+                        <span>${escapeHTML(pubDate)}</span>
+                        ${pdfUrl ? `<a href="${escapeAttr(pdfUrl)}" style="text-decoration: none;" target="_blank" rel="noopener noreferrer">[PDF]</a>` : ''}
                     </div>
                 </div>
             `;
@@ -2249,74 +2673,136 @@ const responseData = await postGemini({
                 finalHtml += `
                     <div class="abstract">
                         <div class="abstract-label">Abstract</div>
-                        ${abstract}
+                        ${escapeHTML(abstract)}
                     </div>
                 `;
             }
 
             // 2. Set up parsing with paragraph buffer
             let paragraphBuffer = '';
-            const INLINE_TAGS = ['CITATION', 'MATH', 'FOOTNOTE', 'XREF', 'I', 'B', 'EM', 'STRONG', 'SUP', 'SUB'];
+            const INLINE_TAGS = new Set(['CITATION', 'MATH', 'FOOTNOTE', 'XREF', 'I', 'B', 'EM', 'STRONG', 'SUP', 'SUB', 'A', 'BR']);
+            const SKIP_TOP_LEVEL_TAGS = new Set(['TITLE', 'AUTHORS', 'PUBLICATION_DATE', 'PLAINTEXT', 'ABSTRACT', 'PDF']);
             let sectionStack = [];
 
+            function tagNameOf(node) {
+                return String(node?.tagName || node?.nodeName || '').toUpperCase();
+            }
+
+            function isInlineNode(node) {
+                if (!node || node.nodeType !== 1) return false;
+                const tag = tagNameOf(node);
+                return INLINE_TAGS.has(tag) || (tag === 'A' && node.getAttribute('href')?.startsWith('#'));
+            }
+
+            function isWhitespaceTextNode(node) {
+                return node?.nodeType === 3 && !node.nodeValue.trim();
+            }
+
+            function previousMeaningfulSibling(node) {
+                let prev = node?.previousSibling || null;
+                while (prev && isWhitespaceTextNode(prev)) prev = prev.previousSibling;
+                return prev;
+            }
+
+            function nextMeaningfulSibling(node) {
+                let next = node?.nextSibling || null;
+                while (next && isWhitespaceTextNode(next)) next = next.nextSibling;
+                return next;
+            }
+
+            function cleanParagraphMarkup(markup) {
+                return String(markup || '')
+                    .replace(/[ \t]*\n[ \t]*/g, ' ')
+                    .replace(/\s+/g, ' ')
+                    .replace(/\s+([,.;:!?)}\]\u2019\u201d])/g, '$1')
+                    .trim();
+            }
+
             function flushParagraphBuffer() {
-                if (paragraphBuffer.trim()) {
-                    finalHtml += `<p>${transformXMLContent(paragraphBuffer)}</p>`;
+                const cleaned = cleanParagraphMarkup(paragraphBuffer);
+                if (cleaned) {
+                    finalHtml += `<p>${transformXMLContent(cleaned)}</p>`;
                 }
                 paragraphBuffer = '';
             }
 
-            let currentNode = xml.querySelector('ABSTRACT')?.nextSibling || 
-                          xml.querySelector('PLAINTEXT')?.nextSibling || 
-                          (xml.querySelector('PUBLICATION_DATE') || xml.querySelector('AUTHORS')).nextSibling;
+            function appendSpaceIfNeeded() {
+                if (paragraphBuffer && !/\s$/.test(paragraphBuffer)) paragraphBuffer += ' ';
+            }
+
+            function appendToParagraph(chunk) {
+                if (!chunk) return;
+                if (paragraphBuffer && !/\s$/.test(paragraphBuffer) && !/^\s/.test(chunk) && !/^[,.;:!?)}\]\u2019\u201d]/.test(chunk)) {
+                    paragraphBuffer += ' ';
+                }
+                paragraphBuffer += chunk;
+            }
+
+            function appendInlineOrTextNode(node) {
+                const serialized = node.nodeType === 3
+                    ? node.nodeValue
+                    : new XMLSerializer().serializeToString(node);
+                const pieces = String(serialized || '').split(/(\n\s*\n+)/);
+
+                pieces.forEach((piece, i) => {
+                    if (!piece) return;
+                    if (/^\n\s*\n+$/.test(piece)) {
+                        const atStart = pieces.slice(0, i).every(part => !String(part || '').trim());
+                        const atEnd = pieces.slice(i + 1).every(part => !String(part || '').trim());
+                        const touchesInline =
+                            (atStart && isInlineNode(previousMeaningfulSibling(node))) ||
+                            (atEnd && isInlineNode(nextMeaningfulSibling(node)));
+
+                        // Do not let a blank line around <i>, <em>, <b>, etc. split one sentence into
+                        // three paragraphs. This fixes model output like: one need not \n\n<i>agree</i>\n\n with...
+                        if (touchesInline) appendSpaceIfNeeded();
+                        else flushParagraphBuffer();
+                    } else {
+                        appendToParagraph(piece);
+                    }
+                });
+            }
+
+            let currentNode = xml.documentElement.firstChild;
 
             while (currentNode) {
-                if (currentNode.nodeType === 1 && 
-                    (currentNode.tagName === 'PLAINTEXT' || currentNode.tagName === 'ABSTRACT')) {
+                const tagName = tagNameOf(currentNode);
+
+                if (currentNode.nodeType === 1 && SKIP_TOP_LEVEL_TAGS.has(tagName)) {
                     currentNode = currentNode.nextSibling;
                     continue;
                 }
-                
+
                 const isText = currentNode.nodeType === 3;
-                const isInline = currentNode.nodeType === 1 && (
-                    INLINE_TAGS.includes(currentNode.tagName) ||
-                    (currentNode.tagName === 'a' && currentNode.getAttribute('href')?.startsWith('#'))
-                );
-                
+                const isInline = isInlineNode(currentNode);
+
                 if (isText || isInline) {
-                    const serialized = new XMLSerializer().serializeToString(currentNode);
-                    // Break on blank lines
-                    serialized.split(/\n\s*\n/).forEach((chunk, i, arr) => {
-                        paragraphBuffer += chunk;
-                        if (i < arr.length - 1) flushParagraphBuffer();
-                    });
+                    appendInlineOrTextNode(currentNode);
                 } else if (currentNode.nodeType === 1) {
                     // First flush any buffered paragraph content
                     flushParagraphBuffer();
-                    
-                    const tagName = currentNode.tagName;
-                    
+
                     if (tagName === 'SECTION' || tagName === 'SUBSECTION' || tagName === 'SUBSUBSECTION') {
                         // Close sections at same or lower level
-                        while (sectionStack.length > 0 && 
+                        while (sectionStack.length > 0 &&
                                getSectionLevel(sectionStack[sectionStack.length - 1]) >= getSectionLevel(tagName)) {
                             finalHtml += `</div></div>`;
                             sectionStack.pop();
                         }
-                        
+
                         const secId = currentNode.getAttribute('ref') || `sec_${Date.now()}`;
-                        const secTitle = currentNode.textContent.trim();
+                        const secTitle = currentNode.textContent.trim() || 'Untitled section';
                         const level = getSectionLevel(tagName);
-                        
+
                         finalHtml += `
-                            <div id="${secId}" class="section section-level-${level}" data-section-id="${secId}">
-                                <div class="section-header" data-section-id="${secId}">
+                            <div id="${escapeAttr(secId)}" class="section section-level-${level}" data-section-id="${escapeAttr(secId)}">
+                                <div class="section-header" data-section-id="${escapeAttr(secId)}">
                                     <span class="section-toggle">▼</span>
-                                    <h${level + 1}>${secTitle}</h${level + 1}>
+                                    <h${level + 1}>${escapeHTML(secTitle)}</h${level + 1}>
                                 </div>
-                                <div class="section-content" id="content-${secId}">
+                                <div class="section-content" id="content-${escapeAttr(secId)}">
                         `;
-                        
+
                         sectionStack.push(tagName);
                     } else {
                         // Handle other block elements without breaking them up
@@ -2326,7 +2812,7 @@ const responseData = await postGemini({
                 }
                 currentNode = currentNode.nextSibling;
             }
-            
+
             // Flush any remaining buffer and close sections
             flushParagraphBuffer();
             while (sectionStack.length > 0) {
@@ -2358,11 +2844,11 @@ const responseData = await postGemini({
             // Correctly get the title from the SECTION tag's text content.
             currentPaperXML.querySelectorAll('SECTION').forEach(sec => {
                 const id = sec.getAttribute('ref');
-                const title = sec.textContent.trim(); // The only change needed for the TOC
+                const title = sec.textContent.trim();
                 if (id && title) {
                     tocHTML += `
-                        <li><a href="#" data-section-target="${id}">
-                            ${title}
+                        <li><a href="#" data-section-target="${escapeAttr(id)}">
+                            ${escapeHTML(title)}
                         </a></li>
                     `;
                 }
@@ -2371,7 +2857,8 @@ const responseData = await postGemini({
             tocList.querySelectorAll('a').forEach(link => {
                 link.addEventListener('click', e => {
                     e.preventDefault();
-                    const target = document.querySelector(`[data-section-id="${e.target.dataset.sectionTarget}"]`);
+                    const targetId = e.currentTarget.dataset.sectionTarget;
+                    const target = Array.from(document.querySelectorAll('[data-section-id]')).find(el => el.dataset.sectionId === targetId);
                     target?.scrollIntoView({ behavior: 'smooth', block: 'start' });
                 });
             });
@@ -2479,7 +2966,7 @@ const responseData = await postGemini({
             modal.style.cssText = 'position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 30px; border-radius: 8px; box-shadow: var(--popup-shadow); max-width: 700px; width: 90%; max-height: 80vh; overflow-y: auto; z-index: 2002;';
             
             // Process plaintext to preserve paragraphs and math
-            let processedText = window.plaintextContent
+            let processedText = escapeHTML(window.plaintextContent || 'No layman summary was produced for this conversion.')
                 .split('\n\n')  // Split by double newlines for paragraphs
                 .map(para => `<p style="margin-bottom: 1em; line-height: 1.7;">${para.trim()}</p>`)
                 .join('');
@@ -2515,20 +3002,67 @@ const responseData = await postGemini({
         // --------------------------------------------------------------- 
         // ERROR HANDLING AND FALLBACKS
         // ---------------------------------------------------------------
-        function showXmlFallback(xmlText) {
-            // show download button if we have XML
-            if (xmlText) {
-                window.generatedXML = xmlText;
-                const btn = document.getElementById('downloadXmlBtn');
-                if (btn) btn.style.display = 'block';
+        function showXmlFallback(xmlText, options = {}) {
+            const artifacts = window.conversionArtifacts || createEmptyArtifacts();
+            const raw = window.rawModelOutput || artifacts.rawModelOutput || '';
+            const visibleOutput = xmlText || window.generatedXML || artifacts.xmlText || artifacts.repairedXmlText || raw || '';
+            const message = options.message || 'The rendered view had errors, but the available output was preserved.';
+            const error = options.error;
+            const warnings = [
+                ...(options.warnings || []),
+                ...(artifacts.warnings || []).map(w => w.message || String(w))
+            ].filter(Boolean);
+            const errors = [
+                ...(artifacts.errors || []).map(e => e.message || String(e)),
+                ...(error ? [error.message || String(error)] : [])
+            ].filter(Boolean);
+
+            if (visibleOutput && !window.generatedXML && /<[^>]+>/.test(visibleOutput)) {
+                window.generatedXML = visibleOutput;
+                window.conversionArtifacts.xmlText = visibleOutput;
             }
-            // show as much as we can
-            const escaped = (xmlText || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+            revealDownloadButton('Download partial output + images');
+            const sb = document.getElementById('sidebar');
+            if (sb) sb.style.display = 'block';
+            if (loadingOverlay) loadingOverlay.style.display = 'none';
+
+            const selectedCount = (artifacts.selectedFigures?.length || window.selectedExtractedFigures?.length || 0);
+            const finishReason = artifacts.finishReason && artifacts.finishReason !== 'STOP'
+                ? `<p><strong>Gemini finish reason:</strong> ${escapeHTML(artifacts.finishReason)}</p>`
+                : '';
+            const warningItems = [...new Set(warnings)].slice(0, 10).map(w => `<li>${escapeHTML(w)}</li>`).join('');
+            const errorItems = [...new Set(errors)].slice(0, 5).map(e => `<li>${escapeHTML(e)}</li>`).join('');
+            const previewLabel = /<PAPER[\s>]/i.test(visibleOutput) ? 'XML preview' : raw ? 'Raw model response preview' : 'Captured output preview';
+
             mainContent.innerHTML = `
-                <div style="padding:24px;">
-                    <strong>Rendered view had errors.</strong> You can still download the raw XML below. 
-                    <pre style="white-space:pre-wrap;word-wrap:break-word;margin-top:12px;border:1px solid var(--border-color);padding:12px;max-height:50vh;overflow:auto;">${escaped}</pre>
+                <div class="fallback-panel">
+                    <h2>Partial output saved</h2>
+                    <p>${escapeHTML(message)}</p>
+                    ${finishReason}
+                    <p>The download includes whatever is available: repaired XML if possible, the raw model response, selected images (${selectedCount}), and conversion-log.json.</p>
+                    ${warningItems ? `<div class="conversion-alert"><strong>Warnings</strong><ul>${warningItems}</ul></div>` : ''}
+                    ${errorItems ? `<div class="conversion-alert error"><strong>What failed</strong><ul>${errorItems}</ul></div>` : ''}
+                    <div class="fallback-actions">
+                        <button id="downloadPartialOutputBtn">Download partial output + images</button>
+                        <button class="secondary" id="copyPartialOutputBtn">Copy preview text</button>
+                    </div>
+                    <strong>${escapeHTML(previewLabel)}</strong>
+                    <pre class="artifact-preview">${escapeHTML(visibleOutput || 'No XML/model text was available. The conversion log may still contain useful diagnostics.')}</pre>
                 </div>`;
+
+            document.getElementById('downloadPartialOutputBtn')?.addEventListener('click', downloadConversionArtifacts);
+            document.getElementById('copyPartialOutputBtn')?.addEventListener('click', async () => {
+                const copyBtn = document.getElementById('copyPartialOutputBtn');
+                try {
+                    await navigator.clipboard.writeText(visibleOutput || '');
+                    if (copyBtn) copyBtn.textContent = 'Copied';
+                    setTimeout(() => { if (copyBtn) copyBtn.textContent = 'Copy preview text'; }, 1500);
+                } catch (err) {
+                    addWarning('clipboard', err.message || String(err));
+                    if (copyBtn) copyBtn.textContent = 'Copy failed';
+                    setTimeout(() => { if (copyBtn) copyBtn.textContent = 'Copy preview text'; }, 1500);
+                }
+            });
         }
 
         // --------------------------------------------------------------- 
@@ -2549,11 +3083,20 @@ const responseData = await postGemini({
             Please provide a clear, concise answer based ONLY on the paper's content. If there is a single most relevant sentence from the paper that supports your answer (most cases), include it exactly as: <REFERENCE>One VERBATIM SENTENCE REPRODUCED EXACTLY from the paper.</REFERENCE>. Do NOT answer questions unrelated to the paper - just respond, I think that's unrelated to the paper, so I'm afraid I don't have an answer. Math should be written in LaTeX with $...$. Most answers will be a single paragraph; use up to 3 if absolutely necessary to answer the user question. Do not use Markdown in your response. Do NOT say 'based on the paper' or similar: the user knows this conversation is about a paper.`;
 
 const data = await postGemini({
-  model: 'gemini-3.0-flash',
+  model: 'gemini-3-flash-preview',
   contents: [{ parts: [{ text: prompt }] }],
-  generationConfig: { temperature: 0.3, maxOutputTokens: 8000 }
+  generationConfig: {
+    // Gemini 3 is optimized for the default temperature and can degrade/loop below it.
+    temperature: 1,
+    maxOutputTokens: 8000,
+    // Chat answers do not need the full high/default thinking allowance.
+    thinkingConfig: { thinkingLevel: 'low' }
+  }
 });
-return data.candidates[0].content.parts[0].text;
+const candidate = data?.candidates?.[0];
+const text = (candidate?.content?.parts || []).map(part => part?.text || '').join('\n').trim();
+if (!text) throw new Error(data?.promptFeedback?.blockReason ? `Gemini returned no chat text. Block reason: ${data.promptFeedback.blockReason}.` : 'Gemini returned no chat text.');
+return text;
         }
 
         async function sendMessage() {
@@ -2561,9 +3104,9 @@ return data.candidates[0].content.parts[0].text;
             if (!query) return;
             
             chatHistory.push({ role: 'User', content: query });
-            chatMessages.innerHTML += `<div class="chat-message user">${query}</div>`;
+            chatMessages.insertAdjacentHTML('beforeend', `<div class="chat-message user">${escapeHTML(query)}</div>`);
             chatInput.value = '';
-            chatMessages.innerHTML += `<div class="chat-message ai">Thinking...</div>`;
+            chatMessages.insertAdjacentHTML('beforeend', `<div class="chat-message ai">Thinking...</div>`);
             
             try {
                 let response = await askAboutPaper(query, chatHistory);
@@ -2578,7 +3121,7 @@ return data.candidates[0].content.parts[0].text;
                     
                     if (pageText.includes(refText)) {
                         response = response.replace(/<REFERENCE>.*?<\/REFERENCE>/, 
-                            `<span class="ref-link" onclick="highlightReference('${refText.replace(/'/g, "\\'")}')" style="cursor: pointer; color: var(--link-color); text-decoration: none; border-bottom: 1px dotted var(--link-color);">↗ View source</span>`);
+                            `<span class="ref-link" data-reference="${encodeURIComponent(refText)}" style="cursor: pointer; color: var(--link-color); text-decoration: none; border-bottom: 1px dotted var(--link-color);">↗ View source</span>`);
                     } else {
                         response = response.replace(/<REFERENCE>.*?<\/REFERENCE>/, '');
                     }
@@ -2586,12 +3129,15 @@ return data.candidates[0].content.parts[0].text;
                 
                 chatHistory.push({ role: 'Assistant', content: response });
                 chatMessages.lastElementChild.innerHTML = response;
+                chatMessages.lastElementChild.querySelectorAll('.ref-link[data-reference]').forEach(link => {
+                    link.addEventListener('click', () => highlightReference(decodeURIComponent(link.dataset.reference || '')));
+                });
                 
                 if (window.MathJax?.typesetPromise) {
                     MathJax.typesetPromise([chatMessages.lastElementChild]);
                 }
             } catch (error) {
-                chatMessages.lastElementChild.innerHTML = `Error: ${error.message}`;
+                chatMessages.lastElementChild.textContent = `Error: ${error.message}`;
             }
             
             chatMessages.scrollTop = chatMessages.scrollHeight;
@@ -2692,25 +3238,8 @@ return data.candidates[0].content.parts[0].text;
             }
         });
 
-        // Download XML + images functionality (zip if images present)
-        document.getElementById('downloadXmlBtn').addEventListener('click', async () => {
-            if (!window.generatedXML) return;
-            const selected = (window.selectedExtractedFigures || []).filter(f => f && f.blob);
-            if (selected.length === 0 || typeof JSZip === 'undefined') {
-                // Fallback: just XML
-                const blob = new Blob([window.generatedXML], { type: 'text/xml' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a'); a.href = url; a.download = 'paper.xml'; a.click(); URL.revokeObjectURL(url);
-                return;
-            }
-            const zip = new JSZip();
-            zip.file('paper.xml', window.generatedXML);
-            selected.forEach(fig => zip.file(fig.filename, fig.blob));
-            const content = await zip.generateAsync({ type: 'blob' });
-            const url = URL.createObjectURL(content);
-            const a = document.createElement('a'); a.href = url; a.download = 'paper_with_images.zip'; a.click();
-            URL.revokeObjectURL(url);
-        });
+        // Download XML + images + raw output + logs.
+        document.getElementById('downloadXmlBtn').addEventListener('click', downloadConversionArtifacts);
 
         // Window resize handler
         window.addEventListener('resize', () => {
