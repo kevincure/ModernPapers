@@ -1129,6 +1129,7 @@
         }
 
         function revealDownloadButton(label = 'Download XML + Images') {
+            if (!usedUploadThisSession) return;
             const btn = document.getElementById('downloadXmlBtn');
             if (btn) {
                 btn.textContent = label;
@@ -2731,37 +2732,44 @@ if (window.conversionArtifacts.usageMetadata?.thoughtsTokenCount) {
             }
 
             function appendToParagraph(chunk) {
-                if (!chunk) return;
-                if (paragraphBuffer && !/\s$/.test(paragraphBuffer) && !/^\s/.test(chunk) && !/^[,.;:!?)}\]\u2019\u201d]/.test(chunk)) {
-                    paragraphBuffer += ' ';
-                }
-                paragraphBuffer += chunk;
+		if (!chunk) return;
+		// Added '<' to the regex to prevent spaces before inline XML tags like <FOOTNOTE> or <CITATION>
+		if (paragraphBuffer && !/\s$/.test(paragraphBuffer) && !/^\s/.test(chunk) && !/^[,.;:!?)}\]\u2019\u201d<]/.test(chunk)) {
+		    paragraphBuffer += ' ';
+		}
+		paragraphBuffer += chunk;
+	         }
+
+function appendInlineOrTextNode(node) {
+    const serialized = node.nodeType === 3
+        ? node.nodeValue
+        : new XMLSerializer().serializeToString(node);
+    const pieces = String(serialized || '').split(/(\n\s*\n+)/);
+
+    pieces.forEach((piece, i) => {
+        if (!piece) return;
+        if (/^\n\s*\n+$/.test(piece)) {
+            const atStart = pieces.slice(0, i).every(part => !String(part || '').trim());
+            const atEnd = pieces.slice(i + 1).every(part => !String(part || '').trim());
+            const touchesInline =
+                (atStart && isInlineNode(previousMeaningfulSibling(node))) ||
+                (atEnd && isInlineNode(nextMeaningfulSibling(node)));
+
+            // Check if the current buffer looks like it naturally ended a sentence
+     const isEndOfSentence = /[.:!?\u201d\u2019\])]\s*$/.test(paragraphBuffer);
+
+            // Only suppress the paragraph break if it touches an inline node 
+            // AND the previous text didn't end with sentence-ending punctuation.
+            if (touchesInline && !isEndOfSentence) {
+                appendSpaceIfNeeded();
+            } else {
+                flushParagraphBuffer();
             }
-
-            function appendInlineOrTextNode(node) {
-                const serialized = node.nodeType === 3
-                    ? node.nodeValue
-                    : new XMLSerializer().serializeToString(node);
-                const pieces = String(serialized || '').split(/(\n\s*\n+)/);
-
-                pieces.forEach((piece, i) => {
-                    if (!piece) return;
-                    if (/^\n\s*\n+$/.test(piece)) {
-                        const atStart = pieces.slice(0, i).every(part => !String(part || '').trim());
-                        const atEnd = pieces.slice(i + 1).every(part => !String(part || '').trim());
-                        const touchesInline =
-                            (atStart && isInlineNode(previousMeaningfulSibling(node))) ||
-                            (atEnd && isInlineNode(nextMeaningfulSibling(node)));
-
-                        // Do not let a blank line around <i>, <em>, <b>, etc. split one sentence into
-                        // three paragraphs. This fixes model output like: one need not \n\n<i>agree</i>\n\n with...
-                        if (touchesInline) appendSpaceIfNeeded();
-                        else flushParagraphBuffer();
-                    } else {
-                        appendToParagraph(piece);
-                    }
-                });
-            }
+        } else {
+            appendToParagraph(piece);
+        }
+    });
+}
 
             let currentNode = xml.documentElement.firstChild;
 
