@@ -271,6 +271,11 @@
             background: #f8f8f5;
         }
 
+        .proof-label {
+            font-style: italic;
+            font-weight: 600;
+        }
+
         .theorem-header {
             font-weight: 600;
             margin-bottom: 8px;
@@ -281,13 +286,21 @@
         /* MATHEMATICAL EQUATIONS */
         /* --------------------------------------------------------------- */
         .equation-display {
-            display: flex;
-            justify-content: center;
+            display: block;
+            text-align: center;
             margin: 0 0;
+            overflow-x: auto;
+            overflow-y: hidden;
+            max-width: 100%;
         }
 
         mjx-container[display="true"] {
             margin: 1em auto !important;
+            max-width: none !important;
+        }
+
+        .equation-display mjx-container {
+            min-width: min-content;
         }
 
         /* --------------------------------------------------------------- */
@@ -297,13 +310,15 @@
             overflow: hidden;
             position: relative;
             text-align: center;
+            max-width: 640px;
+            margin: 24px auto 0;
         }
 
         .figure img {
             display: block; /* ensure caption starts on a new line */
             margin: 0 auto;
             max-width: 100%;
-            max-height: 75vh; /* ≤ 75% of viewport height */
+            max-height: 60vh; /* ≤ 60% of viewport height */
             transition: transform 0.2s ease;
             transform-origin: center center; /* default */
         }
@@ -315,6 +330,7 @@
 
         .figure-caption {
             margin-top: 12px;
+            margin-bottom: 28px;
             font-size: 0.9rem;
             color: #666;
             font-style: italic;
@@ -351,9 +367,25 @@
         }
 
         .table-caption {
+            margin-bottom: 8px;
+            font-size: 0.95rem;
+            color: #444;
+            font-weight: 600;
+        }
+
+        .table-notes {
             margin-top: 8px;
-            font-size: 0.9rem;
+            font-size: 0.85rem;
             color: #666;
+            font-style: italic;
+        }
+
+        #tocList li.toc-level-2 {
+            padding-left: 16px;
+            font-size: 0.85rem;
+        }
+
+        #tocList li.toc-appendix a {
             font-style: italic;
         }
 
@@ -367,6 +399,14 @@
 
         ul.bullet-list li, ol.numbered-list li {
             margin-bottom: 0.5em;
+        }
+
+        li.self-enumerated {
+            list-style: none;
+        }
+        ul:has(> li.self-enumerated), ol:has(> li.self-enumerated) {
+            list-style: none;
+            padding-left: 0.5em;
         }
 
         /* --------------------------------------------------------------- */
@@ -891,14 +931,14 @@
     <!-- MOBILE NAVIGATION BUTTONS -->
     <!-- ------------------------------------------------------------------- -->
     <button class="talk-button mobile-only" id="talkButtonMobile">AI Chat</button>
-    <button class="plaintext-button mobile-only" id="plaintextButtonMobile" onclick="showPlaintextModal()">Layman Summary</button>
+    <button class="plaintext-button mobile-only" id="plaintextButtonMobile" onclick="showPlaintextModal()">Layman Summary (AI)</button>
 
     <!-- ------------------------------------------------------------------- -->
     <!-- SIDEBAR NAVIGATION -->
     <!-- ------------------------------------------------------------------- -->
     <div class="sidebar" id="sidebar" style="display:none;">
         <button class="talk-button" id="talkButton">AI Chat</button>
-        <button class="plaintext-button" id="plaintextButton" onclick="showPlaintextModal()">Layman Summary</button>
+        <button class="plaintext-button" id="plaintextButton" onclick="showPlaintextModal()">Layman Summary (AI)</button>
         <button class="plaintext-button" id="downloadXmlBtn" style="display: none; background: #e8f4f8; margin-bottom: 12px;">Download XML + Images</button>
         
         <h3 id="toc-title">Contents</h3>
@@ -929,7 +969,7 @@
     <!-- API Key Modal -->
     <div class="api-key-modal" id="apiKeyModal">
         <h3>Gemini API Key Required</h3>
-        <p>Please enter your Gemini API key to use the Q&A feature. Your key will only be stored for this session.</p>
+        <p>Please enter your Gemini API key. It is used only for this browser session, kept in memory only, and is never saved to disk, cookies, or any server.</p>
         <p style="font-size: 0.85rem;">Get a free key at: <a href="https://aistudio.google.com/app/apikey" target="_blank">aistudio.google.com</a></p>
         <input type="password" id="apiKeyInput" placeholder="Enter your Gemini API key">
         <button id="apiKeySubmit">Continue</button>
@@ -940,8 +980,11 @@
         <h3>Upload Paper</h3>
         <p>Drop a PDF/PPTX or LaTeX + BIB files. We'll extract/confirm figures, then convert to structured XML.</p>
         <input type="file" id="fileInput" accept=".pdf,.pptx,.tex,.bib" multiple style="margin-bottom: 12px;">
+        <input type="url" id="pdfUrlInput" placeholder="URL of the original PDF (optional, adds a [PDF] link)" style="width: 100%; margin-bottom: 12px; padding: 8px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 0.9rem;">
+        <input type="password" id="uploadApiKeyInput" placeholder="Gemini API key (kept only for this session)" style="width: 100%; margin-bottom: 6px; padding: 8px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 0.9rem;">
+        <p style="font-size: 0.8rem; color: #666; margin: 0 0 12px;">Get a free key at <a href="https://aistudio.google.com/app/apikey" target="_blank">aistudio.google.com</a>. It is used only in this browser session and never saved to disk, cookies, or any server.</p>
         <div id="uploadStatus" style="color: #666; font-size: 0.9rem; margin-bottom: 12px;"></div>
-        <button id="convertBtn" style="display: none;">Convert Paper</button>
+        <button id="convertBtn">Convert Paper</button>
     </div>
 
     <!-- Chat Modal -->
@@ -967,7 +1010,7 @@
         <div class="fx-header">
           <h2>Review and Select Figures</h2>
           <div class="fx-actions">
-            <button class="btn secondary" id="fx-cancel">Cancel</button>
+            <button class="btn secondary" id="fx-cancel" title="Deselect all figures and continue without them">Skip Figures</button>
             <button class="btn" id="fx-done">Prepare XML</button>
           </div>
         </div>
@@ -1002,10 +1045,14 @@
         let expandedSections = new Set();
         let sessionApiKey = '';
         let footnoteCounter = 0;
+        let eqAutoCounter = 0;
         let currentPaperXML = null;
         let currentPaperText = '';
         let chatHistory = [];
         let usedUploadThisSession = false;
+        // Gates the two-phase Convert flow: first click extracts figures and shows
+        // the review modal; the modal's Done/Skip re-invoke conversion with this true.
+        let figuresReviewed = false;
         let processingWarnings = [];
         window.generatedXML = '';
         window.rawModelOutput = '';
@@ -1039,7 +1086,7 @@
             'PAPER','TITLE','AUTHORS','PUBLICATION_DATE','ABSTRACT','PLAINTEXT',
             'SECTION','SUBSECTION','SUBSUBSECTION','FULL_LINE_EQUATION','MATH',
             'THEOREM','PROPOSITION','COROLLARY','PROOF','LEMMA','DEFINITION','ASSUMPTION','EXAMPLE','REMARK',
-            'FOOTNOTE','CITATION','TABLE','CAPTION','FIGURE','IMG','APPENDIX','XREF','PDF',
+            'FOOTNOTE','CITATION','TABLE','CAPTION','NOTES','FIGURE','IMG','APPENDIX','XREF','PDF',
             'B','I','EM','STRONG','UL','OL','LI','DL','DT','DD','A','BR','SUP','SUB',
             'THEAD','TBODY','TFOOT','TR','TH','TD'
         ]);
@@ -1083,6 +1130,15 @@
 
         function escapeAttr(value) {
             return escapeHTML(value).replace(/`/g, '&#96;');
+        }
+
+        function decodeHTMLEntities(value) {
+            return String(value ?? '')
+                .replace(/&#39;/g, "'")
+                .replace(/&quot;/g, '"')
+                .replace(/&gt;/g, '>')
+                .replace(/&lt;/g, '<')
+                .replace(/&amp;/g, '&');
         }
 
         function safeDownloadFilename(name, fallback = 'file.png') {
@@ -1217,6 +1273,48 @@
 
             // Preserve only allowlisted tags. Escape all plain-text angle brackets,
             // including dangling comparisons such as p<.05 that have no closing >.
+            // For allowlisted tags, also filter attributes to a per-tag allowlist so
+            // hosted/linked XML cannot inject event handlers or javascript: URLs.
+            const GLOBAL_ATTRS = ['ref'];
+            const TAG_ATTRS = {
+                A: ['href', 'ref'],
+                IMG: ['src', 'alt'],
+                CITATION: ['ref', 'title', 'authors', 'year', 'journal'],
+                XREF: ['ref'],
+                TD: ['colspan', 'rowspan'],
+                TH: ['colspan', 'rowspan']
+            };
+            const safeAttrValue = (tagName, attrName, value) => {
+                const v = String(value || '');
+                if (tagName === 'A' && attrName === 'href') {
+                    return /^\s*(#|https?:\/\/)/i.test(v) ? v : null;
+                }
+                if (tagName === 'IMG' && attrName === 'src') {
+                    if (/^\s*(javascript|vbscript)\s*:/i.test(v)) return null;
+                    if (/^\s*data\s*:/i.test(v) && !/^\s*data\s*:\s*image\//i.test(v)) return null;
+                    return v;
+                }
+                return v;
+            };
+            const filterTagAttributes = (tag, tagName, rawName) => {
+                if (/^<\s*\//.test(tag)) return tag; // closing tag: no attributes
+                const selfClosing = /\/\s*>$/.test(tag);
+                const inner = tag.replace(/^<\s*[A-Za-z_][\w-]*/, '').replace(/\/?\s*>$/, '');
+                const allowed = TAG_ATTRS[tagName] || GLOBAL_ATTRS;
+                const kept = [];
+                const attrRegex = /([A-Za-z_:][\w:.-]*)\s*=\s*("([^"]*)"|'([^']*)')/g;
+                let am;
+                while ((am = attrRegex.exec(inner)) !== null) {
+                    const name = am[1].toLowerCase();
+                    if (name.startsWith('on') || name === 'style') continue;
+                    if (!allowed.includes(name)) continue;
+                    const value = am[3] !== undefined ? am[3] : am[4];
+                    const safe = safeAttrValue(tagName, name, value);
+                    if (safe === null) continue;
+                    kept.push(`${name}="${safe.replace(/"/g, '&quot;')}"`);
+                }
+                return `<${rawName}${kept.length ? ' ' + kept.join(' ') : ''}${selfClosing ? ' /' : ''}>`;
+            };
             let out = '';
             let lastIndex = 0;
             const tagRegex = /<\/?\s*([A-Za-z_][\w-]*)\b[^<>]*\/?>/g;
@@ -1226,7 +1324,7 @@
                 const tag = match[0];
                 const tagName = match[1].toUpperCase();
                 out += ALLOWED_XML_TAGS.has(tagName)
-                    ? tag
+                    ? filterTagAttributes(tag, tagName, match[1])
                     : tag.replace(/</g, '&lt;').replace(/>/g, '&gt;');
                 lastIndex = match.index + tag.length;
             }
@@ -1242,6 +1340,46 @@
             const errors = doc.getElementsByTagName('parsererror');
             if (!errors || !errors.length) return '';
             return errors[0].textContent.replace(/\s+/g, ' ').trim();
+        }
+
+        // Repair malformed closing tags before parsing. Two cases:
+        //   1. Case mismatch: <MATH>...</math> — rewrite the closer to the opener's
+        //      case (XML is case-sensitive, so this would otherwise fail to parse).
+        //   2. Wrong name: <MATH>...</literal> — a closing tag whose name matches no
+        //      open element, while some element IS open, is a mis-named closer for
+        //      the innermost open tag; rewrite it to close that tag.
+        // Both are matched via a stack so nesting is respected; only unambiguous
+        // cases are touched.
+        function fixTagCaseMismatches(xmlStr) {
+            let fixes = 0;
+            const stack = [];
+            const out = xmlStr.replace(/<(\/?)([A-Za-z_][\w-]*)((?:[^<>"']|"[^"]*"|'[^']*')*?)(\/?)>/g,
+                (full, slash, name, attrs, selfClose) => {
+                    if (selfClose === '/') return full; // self-closing: no pairing
+                    if (!slash) { stack.push(name); return full; }
+                    // closing tag: find nearest matching opener case-insensitively
+                    const lower = name.toLowerCase();
+                    for (let i = stack.length - 1; i >= 0; i--) {
+                        if (stack[i].toLowerCase() === lower) {
+                            const opener = stack[i];
+                            stack.splice(i);
+                            if (opener !== name) { fixes++; return `</${opener}>`; }
+                            return full;
+                        }
+                    }
+                    // No opener anywhere matches this closer's name. If something is
+                    // open, treat this as a mis-named closer for the innermost tag.
+                    if (stack.length) {
+                        const opener = stack.pop();
+                        fixes++;
+                        return `</${opener}>`;
+                    }
+                    // Nothing open: a stray closing tag. Drop it so it cannot break
+                    // parsing or render as literal text.
+                    fixes++;
+                    return '';
+                });
+            return { xmlText: out, fixes };
         }
 
         function parseXmlOrThrow(xmlText) {
@@ -1260,16 +1398,27 @@
             const warnings = [];
             const doc = parseXmlOrThrow(xmlStr);
 
-            const targetTags = [
+            const targetTags = new Set([
                 'SECTION','SUBSECTION','SUBSUBSECTION','FIGURE','TABLE','FULL_LINE_EQUATION',
                 'THEOREM','PROPOSITION','COROLLARY','PROOF','LEMMA','DEFINITION','ASSUMPTION','EXAMPLE','REMARK','APPENDIX'
-            ];
+            ]);
+            // Collect ref targets case-insensitively, and de-duplicate repeated ref ids
+            // (duplicates create duplicate DOM ids and anchors that jump to the wrong place).
             const targets = new Set();
-            targetTags.forEach(tag => {
-                doc.querySelectorAll(tag).forEach(el => {
-                    const id = el.getAttribute('ref');
-                    if (id) targets.add(id);
-                });
+            const allElements = Array.from(doc.getElementsByTagName('*'));
+            allElements.forEach(el => {
+                if (!targetTags.has(el.nodeName.toUpperCase())) return;
+                let id = el.getAttribute('ref');
+                if (!id) return;
+                if (targets.has(id)) {
+                    let n = 2;
+                    let candidate = `${id}_dup${n}`;
+                    while (targets.has(candidate)) candidate = `${id}_dup${++n}`;
+                    warnings.push(`Duplicate ref id "${id}" was renamed to "${candidate}"; links point to the first occurrence.`);
+                    el.setAttribute('ref', candidate);
+                    id = candidate;
+                }
+                targets.add(id);
             });
 
             const isInFootnote = (el) => {
@@ -1287,7 +1436,7 @@
                 parent.removeChild(el);
             };
 
-            doc.querySelectorAll('XREF').forEach(x => {
+            allElements.filter(el => el.nodeName.toUpperCase() === 'XREF').forEach(x => {
                 const ref = x.getAttribute('ref');
                 if (isInFootnote(x)) {
                     warnings.push('Removed a cross-reference inside a footnote.');
@@ -1295,6 +1444,18 @@
                 } else if (!ref || !targets.has(ref)) {
                     warnings.push(`Removed a broken cross-reference${ref ? ` to "${ref}"` : ''}.`);
                     unwrapKeepChildren(x);
+                }
+            });
+
+            // Validate in-document <a href="#..."> anchors the same way as XREF:
+            // unwrap ones pointing at ids that do not exist, so clicks never no-op.
+            allElements.filter(el => el.nodeName.toUpperCase() === 'A').forEach(a => {
+                const href = a.getAttribute('href') || '';
+                if (!href.startsWith('#')) return;
+                const target = href.slice(1);
+                if (!target || !targets.has(target)) {
+                    warnings.push(`Removed a broken anchor link${target ? ` to "#${target}"` : ''}.`);
+                    unwrapKeepChildren(a);
                 }
             });
 
@@ -1325,7 +1486,11 @@
                 return { xmlText: raw, xmlDoc: null, warnings, renderable: false, partial: true };
             }
 
-            let xmlText = sanitizeXml(repaired.xmlText);
+            const caseFixed = fixTagCaseMismatches(repaired.xmlText);
+            if (caseFixed.fixes > 0) {
+                warnings.push(`Auto-corrected ${caseFixed.fixes} malformed closing tag(s).`);
+            }
+            let xmlText = sanitizeXml(caseFixed.xmlText);
 
             // Save the best available XML before strict parsing/normalization.
             // If parsing fails, users still get XML, raw response, images, and log.
@@ -1387,23 +1552,52 @@
         }
 
         function normalizeSelectedFigureFilenames(figures) {
+            // Single naming convention: fig_N.png. Names the user typed and names
+            // derived from a detected "Figure N" caption are kept; provisional
+            // fig_p<page>.png names are replaced with the next free fig_N.png in
+            // page order. This is also the exact set of filenames the model is
+            // told to use in <IMG src>, so the XML matches the shipped PNGs.
             const seen = new Set();
-            figures.forEach((fig, index) => {
-                let filename = safeDownloadFilename(fig.filename, `fig_${index + 1}.png`);
-                if (!/\.png$/i.test(filename)) filename += '.png';
-                let candidate = filename;
+            const claim = (name) => {
+                let candidate = name;
                 let suffix = 2;
                 while (seen.has(candidate.toLowerCase())) {
-                    candidate = filename.replace(/\.png$/i, `_${suffix++}.png`);
+                    candidate = name.replace(/\.png$/i, `_${suffix++}.png`);
                 }
                 seen.add(candidate.toLowerCase());
-                fig.filename = candidate;
+                return candidate;
+            };
+            // First pass: keep intentional names (user-edited or caption-derived).
+            figures.forEach(fig => {
+                const isProvisional = /^fig_p\d+(_\d+)?\.png$/i.test(fig.filename || '');
+                if (!fig.userNamed && (isProvisional || !fig.filename)) return;
+                let filename = safeDownloadFilename(fig.filename, 'fig.png');
+                if (!/\.png$/i.test(filename)) filename += '.png';
+                fig.filename = claim(filename);
+                fig._named = true;
+            });
+            // Second pass: assign the lowest free fig_N.png to the rest, in order.
+            let n = 1;
+            figures.forEach(fig => {
+                if (fig._named) { delete fig._named; return; }
+                while (seen.has(`fig_${n}.png`)) n++;
+                fig.filename = claim(`fig_${n}.png`);
             });
             return figures;
         }
 
+        // Warnings for issues that were automatically resolved during rendering.
+        // They remain in the downloaded conversion log but are not surfaced to the
+        // reader, since nothing needs their attention.
+        const BENIGN_WARNING_PATTERNS = [
+            /^Auto-corrected \d+ (?:malformed|mismatched-case) closing tag/i
+        ];
+        function isBenignWarning(msg) {
+            return BENIGN_WARNING_PATTERNS.some(re => re.test(String(msg || '')));
+        }
+
         function showConversionBanner(warnings = []) {
-            const unique = [...new Set((warnings || []).filter(Boolean))];
+            const unique = [...new Set((warnings || []).filter(Boolean))].filter(w => !isBenignWarning(w));
             if (!unique.length && !(window.conversionArtifacts?.finishReason && window.conversionArtifacts.finishReason !== 'STOP')) return;
             const finish = window.conversionArtifacts?.finishReason || '';
             const items = unique.slice(0, 8).map(w => `<li>${escapeHTML(w)}</li>`).join('');
@@ -1470,11 +1664,10 @@
         }
 
 
-        // --------------------------------------------------------------- 
-        // INTEGRATED FIGURE EXTRACTION (from ExtractFigures)
+        // ---------------------------------------------------------------
+        // INTEGRATED FIGURE EXTRACTION
         // ---------------------------------------------------------------
         let extractedFigures = [];
-        let figureBlobMap = {};
         const fxOverlay = document.getElementById('fxOverlay');
         const fx = {
             status: document.getElementById('fx-status'),
@@ -1490,30 +1683,36 @@
         };
 
         // pdf.js dynamic loader and worker configuration
+        // pdf.js 4.x+ ships only ES module (.mjs) builds on public CDNs, so the
+        // classic-script 4.0.379/pdf.min.js URL 404s. Pin the last classic-script
+        // build (3.11.174) with a second CDN as fallback, and surface a clear error
+        // when neither loads (ad blocker / offline / CSP).
+        const PDFJS_SOURCES = [
+            'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js',
+            'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js'
+        ];
+        const PDFJS_WORKERS = [
+            'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js',
+            'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js'
+        ];
+        let pdfjsSourceIndex = 0;
         async function ensurePdfjsLibLoaded() {
             if (window.pdfjsLib) return;
-            await new Promise((resolve, reject) => {
-                const primary = document.createElement('script');
-                primary.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.min.js';
-                primary.onload = resolve;
-                primary.onerror = () => {
-                    const fallback = document.createElement('script');
-                    fallback.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
-                    fallback.onload = resolve;
-                    fallback.onerror = reject;
-                    document.head.appendChild(fallback);
-                };
-                document.head.appendChild(primary);
-            });
+            for (let i = 0; i < PDFJS_SOURCES.length; i++) {
+                const ok = await new Promise((resolve) => {
+                    const s = document.createElement('script');
+                    s.src = PDFJS_SOURCES[i];
+                    s.onload = () => resolve(true);
+                    s.onerror = () => resolve(false);
+                    document.head.appendChild(s);
+                });
+                if (ok && window.pdfjsLib) { pdfjsSourceIndex = i; return; }
+            }
+            throw new Error('The PDF library (pdf.js) failed to load from both CDNs, so figures cannot be extracted. Check your network connection, ad blocker, or content security policy, then reload. You can still convert the paper without extracted figures.');
         }
         function configurePdfjsWorker() {
             if (!window.pdfjsLib) return;
-            const version = (pdfjsLib.version || '').toString();
-            const isV4 = version.startsWith('4.');
-            const workerSrc = isV4
-                ? 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.worker.min.js'
-                : 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-            pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc;
+            pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS_WORKERS[pdfjsSourceIndex];
         }
 
         // Helpers
@@ -1524,19 +1723,22 @@
         function uniquifyFilename(name) {
           const used = new Set(extractedFigures.map(f => (f.filename || '').toLowerCase()));
           let stem = name.replace(/\.png$/i,''); let n = 1; let cand = stem + '.png';
-          while (used.has(cand.toLowerCase())) cand = `${stem}-${++n}.png`;
+          while (used.has(cand.toLowerCase())) cand = `${stem}_${++n}.png`;
           return cand;
         }
+        // One convention everywhere: fig_<figure-number>.png when a caption was
+        // detected, otherwise a provisional fig_p<page>.png that
+        // normalizeSelectedFigureFilenames replaces with the next free fig_N.png.
         function suggestFilename(title, pageNum) {
           const label = baseLabelFromTitle(title);
-          return uniquifyFilename(`${label ? `fig-${label}` : `fig-${pageNum}`}.png`);
+          return uniquifyFilename(`${label ? `fig_${label.toLowerCase()}` : `fig_p${pageNum}`}.png`);
         }
         function updateFxProgress(pct){ fx.progress.style.display='block'; fx.progressBar.style.width = `${pct}%`; }
         function fxStatus(msg){ fx.status.textContent = msg; }
         function fxError(msg){ fx.error.textContent = msg; fx.error.style.display='block'; setTimeout(()=>fx.error.style.display='none', 5000); }
         function resetFigureUI(){ extractedFigures = []; fx.imageGrid.innerHTML=''; fx.results.style.display='none'; fx.progress.style.display='none'; fx.status.textContent=''; }
 
-        // Matrix + geometry helpers from ExtractFigures
+        // Matrix + geometry helpers
         function multiplyMatrices(m1, m2) {
             return [
                 m1[0] * m2[0] + m1[2] * m2[1],
@@ -1552,14 +1754,26 @@
             const boxes = [];
             for (const item of textContent.items) {
                 if (!item || !item.transform) continue;
+                // Whitespace-only items are invisible positioning runs (TikZ and
+                // matplotlib emit spaces with huge advance widths, sometimes
+                // rotated); treating them as text creates phantom boxes hundreds
+                // of pixels tall that block panel merging and inflate coverage.
+                if (!item.str || !item.str.trim()) continue;
                 const M = multiplyMatrices(renderViewport.transform, item.transform);
                 const a = applyToPoint(M, 0, 0);
-                const b = applyToPoint(M, item.width || 0, 0);
+                // item.width is in user-space units (pdf.js text-layer semantics):
+                // scale it by the viewport only and extend along the baseline
+                // direction. Passing it through M would multiply it by the font
+                // size a second time, inflating every box by ~8x.
+                const baseLen = Math.hypot(M[0], M[1]) || 1;
+                const len = (item.width || 0) * (renderViewport.scale || 1);
+                const b = { x: a.x + (M[0] / baseLen) * len, y: a.y + (M[1] / baseLen) * len };
                 const c = applyToPoint(M, 0, 1);
                 const minX = Math.min(a.x, b.x, c.x);
                 const minY = Math.min(a.y, b.y, c.y);
                 const maxX = Math.max(a.x, b.x, c.x);
                 const maxY = Math.max(a.y, b.y, c.y);
+                if (!Number.isFinite(minX) || !Number.isFinite(minY) || !Number.isFinite(maxX) || !Number.isFinite(maxY)) continue;
                 const w = Math.max(1, Math.round(maxX - minX));
                 const h = Math.max(1, Math.round(maxY - minY));
                 boxes.push({ x: Math.round(minX), y: Math.round(minY), w, h });
@@ -1620,8 +1834,12 @@
                         const gapX = Math.max(0, Math.max(a.x, b.x) - Math.min(a.x + a.w, b.x + b.w));
                         const gapY = Math.max(0, Math.max(a.y, b.y) - Math.min(a.y + a.h, b.y + b.h));
                         const smallDim = Math.min(Math.min(a.w, a.h), Math.min(b.w, b.h));
-                        const nearHoriz = gapX < Math.max(12, smallDim * 0.12);
-                        const nearVert  = gapY < Math.max(12, smallDim * 0.12);
+                        // Strongly aligned boxes (side-by-side panels of one figure)
+                        // may sit further apart than fragments of a single image, so
+                        // extend the merge reach when alignment is strong; hasText
+                        // below still blocks merging across paragraphs/captions.
+                        const nearHoriz = gapX < Math.max(12, smallDim * (vOverlap > 0.5 ? 0.30 : 0.12));
+                        const nearVert  = gapY < Math.max(12, smallDim * (hOverlap > 0.5 ? 0.30 : 0.12));
                         const interArea = boxesOverlap(a, b);
                         const smallerArea = Math.min(a.w * a.h, b.w * b.h);
                         const significantIntersection = interArea / Math.max(1, smallerArea) > 0.06;
@@ -1664,8 +1882,11 @@
             }
             const maxTrim = Math.round(h * 0.10);
             const margin = Math.max(1, Math.round(Math.min(w, h) * 0.005));
-            if (topBoxCount >= 2 || topOverlapWidth > w * 0.6) { const proposed = Math.min(maxTrim, Math.max(0, (topMax + margin) - top)); top += proposed; }
-            if (bottomBoxCount >= 2 || bottomOverlapWidth > w * 0.6) { const proposed = Math.min(maxTrim, Math.max(0, bottom - (bottomMin - margin))); bottom -= proposed; }
+            // Trim only when the text row spans most of the crop width (captions,
+            // paragraph lines). Several narrow labels (panel titles, axis names)
+            // are figure content and must stay.
+            if (topOverlapWidth > w * 0.6) { const proposed = Math.min(maxTrim, Math.max(0, (topMax + margin) - top)); top += proposed; }
+            if (bottomOverlapWidth > w * 0.6) { const proposed = Math.min(maxTrim, Math.max(0, bottom - (bottomMin - margin))); bottom -= proposed; }
             if (bottom <= top + 1) return { x: left, y: top, w: Math.max(1, right - left), h: 1 };
             return { x: left, y: top, w: right - left, h: bottom - top };
         }
@@ -1698,7 +1919,15 @@
                 fx.selectAll.addEventListener('click', () => toggleFxSelection(true));
                 fx.selectNone.addEventListener('click', () => toggleFxSelection(false));
                 fx.combine.addEventListener('click', () => smartCombineSelected());
-                document.getElementById('fx-cancel').addEventListener('click', () => { fxOverlay.style.display = 'none'; });
+                document.getElementById('fx-cancel').addEventListener('click', () => {
+                    // "Skip Figures": deselect everything so the conversion genuinely
+                    // proceeds without figures, then continue to conversion just like
+                    // Done (extraction has already run at this point).
+                    toggleFxSelection(false);
+                    fxOverlay.style.display = 'none';
+                    const btn = document.getElementById('convertBtn');
+                    if (btn && !btn.disabled) btn.click();
+                });
                 document.getElementById('fx-done').addEventListener('click', () => {
                     fxOverlay.style.display = 'none';
                     const btn = document.getElementById('convertBtn');
@@ -1721,6 +1950,7 @@
                     if (!e.target.matches('.filename-input')) return;
                     const idx = parseInt(e.target.closest('.image-item').dataset.index, 10);
                     extractedFigures[idx].filename = e.target.value.trim();
+                    extractedFigures[idx].userNamed = true;
                 });
                 fx.imageGrid.addEventListener('blur', (e) => {
                     if (!e.target.matches('.filename-input')) return;
@@ -1786,20 +2016,26 @@
             out.getContext('2d').drawImage(combo, 0, 0, out.width, out.height);
           }
           const blob = await new Promise(res => out.toBlob(res, 'image/png'));
-          const aLab = baseLabelFromTitle(A.title) || (A.filename||'').replace(/\.png$/i,'').replace(/^fig-/i,'') || `p${A.page}`;
-          const bLab = baseLabelFromTitle(B.title) || (B.filename||'').replace(/\.png$/i,'').replace(/^fig-/i,'') || `p${B.page}`;
-          const newName = uniquifyFilename(`fig-${aLab}_${bLab}.png`);
-          // Remove originals, keep only combined
+          const aLab = baseLabelFromTitle(A.title) || (A.filename||'').replace(/\.png$/i,'').replace(/^fig_?/i,'') || `p${A.page}`;
+          const bLab = baseLabelFromTitle(B.title) || (B.filename||'').replace(/\.png$/i,'').replace(/^fig_?/i,'') || `p${B.page}`;
+          const newName = uniquifyFilename(`fig_${aLab.toLowerCase()}_${bLab.toLowerCase()}.png`);
+          // Remove originals; insert the combined figure at the earlier of the two
+          // positions so figure page-order is preserved.
           const hi = Math.max(i1,i2), lo = Math.min(i1,i2);
           extractedFigures.splice(hi,1); extractedFigures.splice(lo,1);
           const combined = {
             page: A.page, width: out.width, height: out.height,
             blob, url: URL.createObjectURL(blob),
             filename: newName,
+            bbox: (A.bbox && B.bbox) ? {
+              x: Math.min(A.bbox.x, B.bbox.x), y: Math.min(A.bbox.y, B.bbox.y),
+              w: Math.max(A.bbox.x + A.bbox.w, B.bbox.x + B.bbox.w) - Math.min(A.bbox.x, B.bbox.x),
+              h: Math.max(A.bbox.y + A.bbox.h, B.bbox.y + B.bbox.h) - Math.min(A.bbox.y, B.bbox.y)
+            } : (A.bbox || B.bbox || null),
             title: `Combined: ${A.title || A.filename} + ${B.title || B.filename}`,
-            caption: '', selected: true
+            caption: '', selected: true, userNamed: A.userNamed || B.userNamed
           };
-          extractedFigures.push(combined);
+          extractedFigures.splice(lo, 0, combined);
           displayFxResults();
         }
 
@@ -1830,6 +2066,7 @@
                     });
                 }
                 updateFxProgress(100);
+                fxStatus('');
                 attachFxListeners();
                 displayFxResults();
                 // If nothing was extracted, auto-close and convert
@@ -1846,6 +2083,344 @@
             }
         }
 
+        // ---------------------------------------------------------------
+        // FIGURE DETECTION HELPERS
+        // ---------------------------------------------------------------
+        // Detect vector figures drawn directly in the content stream (TikZ,
+        // pgfplots, matplotlib PGF, gnuplot, ...). These emit raw path operators
+        // with no XObject.
+        const DETECT_INLINE_VECTOR = true;
+        // When a page's text layer contains a "Figure N" caption but operator-based
+        // detection produced no crop for that page, fall back to asking Gemini for
+        // figure bounding boxes on a rendered page image.
+        const AI_FIGURE_FALLBACK = true;
+        const AI_FALLBACK_MAX_PAGES = 6;
+
+        function transformedBBox(matrix, x1, y1, x2, y2) {
+            const p1 = applyToPoint(matrix, x1, y1);
+            const p2 = applyToPoint(matrix, x2, y1);
+            const p3 = applyToPoint(matrix, x1, y2);
+            const p4 = applyToPoint(matrix, x2, y2);
+            return {
+                minX: Math.min(p1.x, p2.x, p3.x, p4.x),
+                minY: Math.min(p1.y, p2.y, p3.y, p4.y),
+                maxX: Math.max(p1.x, p2.x, p3.x, p4.x),
+                maxY: Math.max(p1.y, p2.y, p3.y, p4.y)
+            };
+        }
+
+        // Decode a constructPath operator's sub-ops and flat args array into a
+        // bounding box in the path's own coordinate space. Argument counts per
+        // sub-op are stable across pdf.js 2.x/3.x.
+        function pathOpsBBox(subOps, subArgs) {
+            let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+            let idx = 0;
+            const addPoint = (x, y) => {
+                if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+                if (x < minX) minX = x; if (x > maxX) maxX = x;
+                if (y < minY) minY = y; if (y > maxY) maxY = y;
+            };
+            for (let i = 0; i < subOps.length; i++) {
+                const op = subOps[i];
+                if (op === pdfjsLib.OPS.moveTo || op === pdfjsLib.OPS.lineTo) {
+                    addPoint(subArgs[idx], subArgs[idx + 1]); idx += 2;
+                } else if (op === pdfjsLib.OPS.curveTo) {
+                    addPoint(subArgs[idx], subArgs[idx + 1]);
+                    addPoint(subArgs[idx + 2], subArgs[idx + 3]);
+                    addPoint(subArgs[idx + 4], subArgs[idx + 5]); idx += 6;
+                } else if (op === pdfjsLib.OPS.curveTo2 || op === pdfjsLib.OPS.curveTo3) {
+                    addPoint(subArgs[idx], subArgs[idx + 1]);
+                    addPoint(subArgs[idx + 2], subArgs[idx + 3]); idx += 4;
+                } else if (op === pdfjsLib.OPS.rectangle) {
+                    const x = subArgs[idx], y = subArgs[idx + 1];
+                    addPoint(x, y);
+                    addPoint(x + subArgs[idx + 2], y + subArgs[idx + 3]); idx += 4;
+                } else if (op === pdfjsLib.OPS.closePath) {
+                    // no args
+                }
+            }
+            if (minX === Infinity) return null;
+            return { minX, minY, maxX, maxY };
+        }
+
+        // Group text items into reading-order lines with render-space boxes so we
+        // can locate "Figure N" captions near each crop. Items are clustered by
+        // baseline, then ordered left-to-right within each cluster (superscripts
+        // like the 2 in q^2 have a higher baseline and would otherwise be
+        // concatenated first, breaking caption detection). Clusters are split at
+        // column-sized horizontal gaps so side-by-side panels/columns do not fuse
+        // into one line.
+        function buildTextLines(textContent, renderViewport, marginPad) {
+            const entries = [];
+            for (const item of textContent.items) {
+                if (!item || !item.transform || !item.str || !item.str.trim()) continue;
+                const M = multiplyMatrices(renderViewport.transform, item.transform);
+                const a = applyToPoint(M, 0, 0);
+                // item.width is in user-space units (pdf.js text-layer semantics):
+                // scale it by the viewport only and extend along the baseline
+                // direction. Passing it through M would multiply it by the font
+                // size a second time, inflating every box by ~8x.
+                const baseLen = Math.hypot(M[0], M[1]) || 1;
+                const len = (item.width || 0) * (renderViewport.scale || 1);
+                const b = { x: a.x + (M[0] / baseLen) * len, y: a.y + (M[1] / baseLen) * len };
+                const c = applyToPoint(M, 0, 1);
+                const minX = Math.min(a.x, b.x, c.x) + marginPad;
+                const minY = Math.min(a.y, b.y, c.y) + marginPad;
+                const maxX = Math.max(a.x, b.x, c.x) + marginPad;
+                const maxY = Math.max(a.y, b.y, c.y) + marginPad;
+                if (!Number.isFinite(minX) || !Number.isFinite(minY)) continue;
+                entries.push({ str: item.str, x: minX, y: minY, w: Math.max(1, maxX - minX), h: Math.max(1, maxY - minY) });
+            }
+            entries.sort((p, q) => (p.y - q.y) || (p.x - q.x));
+            // Cluster into baseline groups
+            const clusters = [];
+            for (const e of entries) {
+                const last = clusters[clusters.length - 1];
+                if (last && Math.abs(e.y - last.y) < Math.max(last.h, e.h) * 0.6) {
+                    last.members.push(e);
+                    last.y = Math.min(last.y, e.y);
+                    last.h = Math.max(last.h, e.h);
+                } else {
+                    clusters.push({ y: e.y, h: e.h, members: [e] });
+                }
+            }
+            // Order members left-to-right and split at large horizontal gaps
+            const lines = [];
+            for (const cl of clusters) {
+                cl.members.sort((p, q) => p.x - q.x);
+                let current = null;
+                for (const m of cl.members) {
+                    const gapThreshold = Math.max(60, cl.h * 2.5);
+                    if (current && m.x - (current.x + current.w) > gapThreshold) {
+                        lines.push(current);
+                        current = null;
+                    }
+                    if (!current) {
+                        current = { text: m.str, x: m.x, y: m.y, w: m.w, h: m.h };
+                    } else {
+                        current.text += (!/\s$/.test(current.text) && !/^\s/.test(m.str) ? ' ' : '') + m.str;
+                        current.w = Math.max(current.x + current.w, m.x + m.w) - Math.min(current.x, m.x);
+                        current.x = Math.min(current.x, m.x);
+                        current.y = Math.min(current.y, m.y);
+                        current.h = Math.max(current.h, m.h);
+                    }
+                }
+                if (current) lines.push(current);
+            }
+            lines.sort((p, q) => (p.y - q.y) || (p.x - q.x));
+            return lines;
+        }
+
+        const FIGURE_CAPTION_RE = /^\s*(?:fig(?:ure)?\.?)\s*([A-Za-z]?\d+[A-Za-z0-9]*)\s*[.:]?/i;
+
+        // Turn merged paint regions into final figure regions:
+        //   1. drop tiny regions and text-dominant (table-like) regions;
+        //   2. absorb touching hairline strokes - axis lines and arrows are
+        //      thin paths that are excluded from region formation (so table
+        //      rules cannot seed regions) but belong to the figure once a
+        //      region exists next to them;
+        //   3. absorb nearby label-like text lines (axis labels, tick numbers,
+        //      panel titles) that sit a bit outside the painted area;
+        //   4. consolidate regions that resolve to the SAME caption line: one
+        //      caption means one figure, even when panel gaps defeated the
+        //      geometric merge.
+        function refineFigureRegions(opts) {
+            const { mergedCrops, initialCrops, textBoxes, textLines, hairlineBoxes,
+                    pageWidth, pageHeight, canvasHeight, renderedPageArea, skipTables } = opts;
+            const regions = [];
+            for (const rough of mergedCrops) {
+                // Only a small noise floor here: the real size filter runs AFTER
+                // caption consolidation, because individual panels of one figure
+                // can each be tiny while the figure as a whole is large.
+                if (rough.w * rough.h < renderedPageArea * 0.004) continue;
+                const txtCov = textCoverage(rough, textBoxes);
+                const paintCov = Math.min(1, textCoverage(rough, initialCrops));
+                if (skipTables && txtCov > 0.45 && paintCov < 0.5) continue;
+                regions.push({ x: rough.x, y: rough.y, w: rough.w, h: rough.h });
+            }
+            const nearBox = (r, b, d) => !(b.x > r.x + r.w + d || b.x + b.w < r.x - d || b.y > r.y + r.h + d || b.y + b.h < r.y - d);
+            const growTo = (r, b) => {
+                const nx = Math.min(r.x, b.x), ny = Math.min(r.y, b.y);
+                const nx2 = Math.max(r.x + r.w, b.x + b.w), ny2 = Math.max(r.y + r.h, b.y + b.h);
+                if (nx === r.x && ny === r.y && nx2 === r.x + r.w && ny2 === r.y + r.h) return false;
+                r.x = nx; r.y = ny; r.w = nx2 - nx; r.h = ny2 - ny;
+                return true;
+            };
+            const wouldExplode = (r, b, factor) => {
+                const nx = Math.min(r.x, b.x), ny = Math.min(r.y, b.y);
+                const nx2 = Math.max(r.x + r.w, b.x + b.w), ny2 = Math.max(r.y + r.h, b.y + b.h);
+                return (nx2 - nx) * (ny2 - ny) > r.w * r.h * factor;
+            };
+            // Pass 2: hairlines (axis lines, arrows, ticks)
+            for (const r of regions) {
+                let changed = true, guard = 0;
+                while (changed && guard++ < 4) {
+                    changed = false;
+                    for (const hb of hairlineBoxes) {
+                        if (!nearBox(r, hb, 10)) continue;
+                        if (wouldExplode(r, hb, 1.6)) continue;
+                        if (growTo(r, hb)) changed = true;
+                    }
+                }
+            }
+            // Pass 3: nearby label-like text lines
+            const labelReach = Math.round(Math.min(pageWidth, pageHeight) * 0.045);
+            for (const r of regions) {
+                let changed = true, guard = 0;
+                while (changed && guard++ < 3) {
+                    changed = false;
+                    for (const line of textLines) {
+                        if (FIGURE_CAPTION_RE.test(line.text)) continue;
+                        if (line.h > pageHeight * 0.05) continue;
+                        if (line.w > Math.max(60, r.w * 0.35)) continue;
+                        if (!nearBox(r, line, labelReach)) continue;
+                        if (wouldExplode(r, line, 1.5)) continue;
+                        if (growTo(r, line)) changed = true;
+                    }
+                }
+            }
+            // Pass 4: caption-identity consolidation
+            for (const r of regions) {
+                const cap = extractCaption(textLines, r, canvasHeight);
+                r.title = cap.title; r.caption = cap.caption; r.captionIndex = cap.index;
+            }
+            const consolidated = [];
+            const byCaption = new Map();
+            for (const r of regions) {
+                if (r.captionIndex >= 0 && byCaption.has(r.captionIndex)) {
+                    const target = byCaption.get(r.captionIndex);
+                    growTo(target, r);
+                } else {
+                    if (r.captionIndex >= 0) byCaption.set(r.captionIndex, r);
+                    consolidated.push(r);
+                }
+            }
+            // A consolidation can bring a region close to labels that were out of
+            // reach before; repeat the label pass to a fixpoint (a leftmost title
+            // can be rejected on the first sweep because absorbing a later title
+            // is what makes the growth modest).
+            for (const r of consolidated) {
+                let changed = true, guard = 0;
+                while (changed && guard++ < 3) {
+                    changed = false;
+                    for (const line of textLines) {
+                        if (FIGURE_CAPTION_RE.test(line.text)) continue;
+                        if (line.h > pageHeight * 0.05) continue;
+                        if (line.w > Math.max(60, r.w * 0.35)) continue;
+                        if (!nearBox(r, line, labelReach)) continue;
+                        if (wouldExplode(r, line, 1.3)) continue;
+                        if (growTo(r, line)) changed = true;
+                    }
+                }
+            }
+            // Real size filter, now that panels belonging to one figure have been
+            // consolidated. A caption is strong evidence of a genuine figure, so
+            // captioned regions get a lower bar.
+            return consolidated.filter(r =>
+                r.w * r.h >= renderedPageArea * (r.captionIndex >= 0 ? 0.004 : 0.012)
+            );
+        }
+
+        // Find the "Figure N" caption line nearest a crop (preferring below the
+        // crop, then above) and collect its continuation lines.
+        function extractCaption(textLines, crop, pageHeight) {
+            // Generous reach: axis labels, tick numbers, and panel titles often sit
+            // between the figure's graphic content and its caption line.
+            const maxDist = Math.max(60, pageHeight * 0.18);
+            const overlapX = (line) => Math.max(0, Math.min(crop.x + crop.w, line.x + line.w) - Math.max(crop.x, line.x));
+            let best = null;
+            for (let i = 0; i < textLines.length; i++) {
+                const line = textLines[i];
+                const m = FIGURE_CAPTION_RE.exec(line.text);
+                if (!m) continue;
+                if (overlapX(line) < Math.min(crop.w, line.w) * 0.3) continue;
+                const below = line.y >= crop.y + crop.h - 10 && line.y <= crop.y + crop.h + maxDist;
+                const above = line.y + line.h <= crop.y + 10 && line.y + line.h >= crop.y - maxDist;
+                if (!below && !above) continue;
+                const dist = below ? line.y - (crop.y + crop.h) : crop.y - (line.y + line.h);
+                const score = dist + (below ? 0 : maxDist); // prefer captions below
+                if (!best || score < best.score) best = { index: i, score, label: m[1].toUpperCase() };
+            }
+            if (!best) return { title: '', caption: '', index: -1 };
+            let caption = textLines[best.index].text.trim();
+            let prev = textLines[best.index];
+            for (let j = best.index + 1; j < textLines.length && caption.length < 400; j++) {
+                const line = textLines[j];
+                if (line.y - (prev.y + prev.h) > prev.h * 1.6) break;
+                if (FIGURE_CAPTION_RE.test(line.text)) break;
+                caption += ' ' + line.text.trim();
+                prev = line;
+            }
+            return { title: `Figure ${best.label}`, caption: caption.trim(), index: best.index };
+        }
+
+        // AI-vision fallback: ask Gemini for normalized figure bounding boxes on a
+        // rendered page image. Used only when a caption exists but no crop was found.
+        async function aiDetectFiguresOnPage(page, pageNum) {
+            const scale = 2.0;
+            const vp = page.getViewport({ scale });
+            const canvas = document.createElement('canvas');
+            canvas.width = Math.round(vp.width);
+            canvas.height = Math.round(vp.height);
+            await page.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise;
+            const dataUrl = canvas.toDataURL('image/png');
+            const b64 = dataUrl.split(',')[1];
+            const prompt = 'This is a page from an academic paper. Return ONLY a JSON array (no prose, no markdown fences) of bounding boxes for each figure, chart, plot, diagram, or illustration on the page. Include the figure\'s own axis labels and panel titles, but EXCLUDE the "Figure N:" caption paragraph below it, and exclude tables, body text, equations, headers, and footers. Each element must be {"box":[x0,y0,x1,y1]} with coordinates normalized to 0-1 relative to the page (x0,y0 = top-left). Return [] if there are none.';
+            const data = await postGemini({
+                model: 'gemini-3-flash-preview',
+                contents: [{ role: 'user', parts: [{ text: prompt }, { inlineData: { mimeType: 'image/png', data: b64 } }] }],
+                // Gemini 3 docs: keep temperature at the default 1.0; lower values
+                // risk looping/degraded reasoning.
+                generationConfig: { temperature: 1, maxOutputTokens: 2000, thinkingConfig: { thinkingLevel: 'low' } }
+            });
+            const text = (data?.candidates?.[0]?.content?.parts || []).map(p => p?.text || '').join('\n');
+            let boxes = [];
+            try {
+                boxes = JSON.parse(stripMarkdownFences(text).replace(/^[^\[]*/, '').replace(/[^\]]*$/, ''));
+            } catch { return []; }
+            if (!Array.isArray(boxes)) return [];
+            const textContent = await page.getTextContent();
+            const textLines = buildTextLines(textContent, vp, 0);
+            const results = [];
+            for (const entry of boxes.slice(0, 8)) {
+                const b = entry?.box;
+                if (!Array.isArray(b) || b.length < 4) continue;
+                let x0 = Math.max(0, Math.min(1, +b[0])) * canvas.width;
+                let y0 = Math.max(0, Math.min(1, +b[1])) * canvas.height;
+                let x1 = Math.max(0, Math.min(1, +b[2])) * canvas.width;
+                let y1 = Math.max(0, Math.min(1, +b[3])) * canvas.height;
+                const cw0 = Math.round(x1 - x0), ch0 = Math.round(y1 - y0);
+                if (cw0 < 40 || ch0 < 40) continue;
+                let crop = { x: Math.round(x0), y: Math.round(y0), w: cw0, h: ch0 };
+                // If the model's box swallowed the caption anyway, cut the crop just
+                // above the caption line so extraction output stays caption-free.
+                for (const line of textLines) {
+                    if (!FIGURE_CAPTION_RE.test(line.text)) continue;
+                    const withinX = Math.max(0, Math.min(crop.x + crop.w, line.x + line.w) - Math.max(crop.x, line.x)) > Math.min(crop.w, line.w) * 0.3;
+                    const inLowerHalf = line.y > crop.y + crop.h * 0.5 && line.y < crop.y + crop.h;
+                    if (withinX && inLowerHalf) {
+                        crop = { ...crop, h: Math.max(40, Math.round(line.y - 4) - crop.y) };
+                        break;
+                    }
+                }
+                const cw = crop.w, ch = crop.h;
+                const out = document.createElement('canvas');
+                const MAX_DIM = 1024;
+                const s = Math.min(MAX_DIM / cw, MAX_DIM / ch, 1);
+                out.width = Math.round(cw * s); out.height = Math.round(ch * s);
+                out.getContext('2d').drawImage(canvas, crop.x, crop.y, cw, ch, 0, 0, out.width, out.height);
+                const blob = await new Promise(resolve => out.toBlob(resolve, 'image/png'));
+                if (!blob) continue;
+                const { title, caption } = extractCaption(textLines, crop, canvas.height);
+                results.push({
+                    page: pageNum, width: out.width, height: out.height, blob, url: URL.createObjectURL(blob),
+                    bbox: crop,
+                    filename: suggestFilename(title, pageNum), title: title || 'Figure (AI-detected)', caption, selected: true, aiDetected: true
+                });
+            }
+            return results;
+        }
+
         async function handlePDFForFX(file) {
             try {
                 fxOverlay.style.display = 'flex';
@@ -1856,54 +2431,128 @@
                 const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
                 const totalPages = pdf.numPages;
                 fxStatus(`Analyzing ${totalPages} pages...`);
-                const minSizePercent = 0.02; // 2% of page area
                 const skipTables = true;
+                const OPS = pdfjsLib.OPS;
+                const aiFallbackPages = [];
                 for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
                     try {
                     updateFxProgress(((pageNum - 1) / totalPages) * 100);
                     fxStatus(`Processing page ${pageNum} of ${totalPages}...`);
                     const page = await pdf.getPage(pageNum);
                     const viewport = page.getViewport({ scale: 1.0 });
-                    const pageArea = viewport.width * viewport.height;
-                    const minPixelArea = pageArea * minSizePercent;
-                const textContent = await page.getTextContent();
-                const operatorList = await page.getOperatorList();
-                const identity = [1,0,0,1,0,0];
-                let currentTransform = identity.slice();
-                const transformStack = [];
-                const imagePaints = [];
-                const formPaints = [];
-                for (let i = 0; i < operatorList.fnArray.length; i++) {
-                    const fn = operatorList.fnArray[i];
-                    const args = operatorList.argsArray[i];
-                    if (fn === pdfjsLib.OPS.save) {
-                        transformStack.push(currentTransform.slice());
-                    } else if (fn === pdfjsLib.OPS.restore) {
-                        currentTransform = transformStack.pop() || identity.slice();
-                    } else if (fn === pdfjsLib.OPS.transform) {
-                        currentTransform = multiplyMatrices(currentTransform, args);
-                    } else if (fn === pdfjsLib.OPS.paintFormXObjectBegin) {
-                        const formM = (args && Array.isArray(args[0])) ? args[0] : identity;
-                        const bbox = (args && Array.isArray(args[1]) && args[1].length >= 4) ? args[1] : null;
-                        transformStack.push(currentTransform.slice());
-                        currentTransform = multiplyMatrices(currentTransform, formM);
-                        // Capture a candidate vector-figure rectangle for this Form XObject
-                        // Use provided bbox if available; otherwise approximate unit square
-                        formPaints.push({
-                            bbox: bbox ? [bbox[0], bbox[1], bbox[2], bbox[3]] : [0,0,1,1],
-                            hasBBox: !!bbox,
-                            ctm: currentTransform.slice()
-                        });
-                    } else if (pdfjsLib.OPS.paintFormXObjectEnd && fn === pdfjsLib.OPS.paintFormXObjectEnd) {
-                        currentTransform = transformStack.pop() || identity.slice();
-                    } else if (fn === pdfjsLib.OPS.paintImageXObject) {
-                        imagePaints.push({ arg: args[0], inline: false, ctm: currentTransform.slice() });
-                    } else if (pdfjsLib.OPS.paintInlineImageXObject && fn === pdfjsLib.OPS.paintInlineImageXObject) {
-                        imagePaints.push({ arg: null, inline: true, ctm: currentTransform.slice() });
-                    } else if (pdfjsLib.OPS.paintInlineImageXObjectGroup && fn === pdfjsLib.OPS.paintInlineImageXObjectGroup) {
-                        imagePaints.push({ arg: null, inline: true, ctm: currentTransform.slice() });
+                    const textContent = await page.getTextContent();
+                    const operatorList = await page.getOperatorList();
+
+                    // ------------------------------------------------------
+                    // Pass 1: walk operators, tracking the CTM, and collect
+                    // candidate paints of every kind. No size/aspect filtering
+                    // here: filtering before merging drops multi-panel figures
+                    // and strip-sliced rasters piece by piece.
+                    // ------------------------------------------------------
+                    const identity = [1, 0, 0, 1, 0, 0];
+                    let currentTransform = identity.slice();
+                    const transformStack = [];
+                    const formDepthStack = [];
+                    const imagePaints = [];   // {ctm} unit-square paints (raster, inline, masks)
+                    const formPaints = [];    // {bbox, hasBBox, ctm}
+                    const vectorPaints = [];  // {ctm, bbox} inline path drawings
+                    let pendingPaths = [];
+                    let pendingIsClip = false;
+                    let lastClipPaths = [];
+                    const PAINT_PATH_FNS = new Set([
+                        OPS.stroke, OPS.closeStroke, OPS.fill, OPS.eoFill,
+                        OPS.fillStroke, OPS.eoFillStroke, OPS.closeFillStroke, OPS.closeEOFillStroke
+                    ].filter(v => v !== undefined));
+                    const guardedRestore = () => {
+                        // Unbalanced q/Q inside a Form XObject must not pop past the
+                        // form's boundary or every later CTM on the page is corrupted.
+                        const floor = formDepthStack.length ? formDepthStack[formDepthStack.length - 1] : 0;
+                        if (transformStack.length > floor) {
+                            currentTransform = transformStack.pop();
+                        }
+                    };
+                    for (let i = 0; i < operatorList.fnArray.length; i++) {
+                        const fn = operatorList.fnArray[i];
+                        const args = operatorList.argsArray[i];
+                        if (fn === OPS.save) {
+                            transformStack.push(currentTransform.slice());
+                        } else if (fn === OPS.restore) {
+                            guardedRestore();
+                        } else if (fn === OPS.transform) {
+                            currentTransform = multiplyMatrices(currentTransform, args);
+                        } else if (fn === OPS.paintFormXObjectBegin) {
+                            const formM = (args && Array.isArray(args[0])) ? args[0] : identity;
+                            const bbox = (args && Array.isArray(args[1]) && args[1].length >= 4) ? args[1] : null;
+                            transformStack.push(currentTransform.slice());
+                            formDepthStack.push(transformStack.length);
+                            currentTransform = multiplyMatrices(currentTransform, formM);
+                            formPaints.push({
+                                bbox: bbox ? [bbox[0], bbox[1], bbox[2], bbox[3]] : null,
+                                hasBBox: !!bbox,
+                                ctm: currentTransform.slice()
+                            });
+                        } else if (OPS.paintFormXObjectEnd !== undefined && fn === OPS.paintFormXObjectEnd) {
+                            const depth = formDepthStack.pop() || 0;
+                            while (transformStack.length > depth) transformStack.pop();
+                            currentTransform = transformStack.pop() || identity.slice();
+                        } else if (fn === OPS.paintImageXObject
+                                || (OPS.paintInlineImageXObject !== undefined && fn === OPS.paintInlineImageXObject)
+                                || (OPS.paintInlineImageXObjectGroup !== undefined && fn === OPS.paintInlineImageXObjectGroup)
+                                || (OPS.paintImageMaskXObject !== undefined && fn === OPS.paintImageMaskXObject)) {
+                            // Includes image masks: 1-bit stencil figures (scanned
+                            // line art) paint via mask operators. Crops come from the
+                            // rendered page canvas, so the paint kind does not matter.
+                            imagePaints.push({ ctm: currentTransform.slice() });
+                        } else if (OPS.paintImageMaskXObjectGroup !== undefined && fn === OPS.paintImageMaskXObjectGroup) {
+                            const group = Array.isArray(args?.[0]) ? args[0] : [];
+                            for (const img of group) {
+                                const local = Array.isArray(img?.transform)
+                                    ? multiplyMatrices(currentTransform, img.transform)
+                                    : currentTransform.slice();
+                                imagePaints.push({ ctm: local });
+                            }
+                            if (!group.length) imagePaints.push({ ctm: currentTransform.slice() });
+                        } else if ((OPS.paintImageXObjectRepeat !== undefined && fn === OPS.paintImageXObjectRepeat)
+                                || (OPS.paintImageMaskXObjectRepeat !== undefined && fn === OPS.paintImageMaskXObjectRepeat)) {
+                            // Repeat paints carry [..., scaleX, (skews,) scaleY, positions].
+                            const positions = args && args[args.length - 1];
+                            const isMaskRepeat = OPS.paintImageMaskXObjectRepeat !== undefined && fn === OPS.paintImageMaskXObjectRepeat;
+                            const scaleX = +args?.[1] || 1;
+                            const scaleY = isMaskRepeat ? (+args?.[4] || 1) : (+args?.[2] || 1);
+                            if (positions && positions.length >= 2) {
+                                for (let p = 0; p + 1 < positions.length; p += 2) {
+                                    const local = multiplyMatrices(currentTransform, [scaleX, 0, 0, scaleY, positions[p], positions[p + 1]]);
+                                    imagePaints.push({ ctm: local });
+                                }
+                            } else {
+                                imagePaints.push({ ctm: currentTransform.slice() });
+                            }
+                        } else if (DETECT_INLINE_VECTOR && fn === OPS.constructPath) {
+                            const subOps = args?.[0] || [];
+                            const subArgs = args?.[1] || [];
+                            const bbox = pathOpsBBox(subOps, subArgs);
+                            if (bbox) pendingPaths.push({ ctm: currentTransform.slice(), bbox });
+                        } else if (DETECT_INLINE_VECTOR && (fn === OPS.clip || fn === OPS.eoClip)) {
+                            pendingIsClip = true;
+                        } else if (DETECT_INLINE_VECTOR && fn === OPS.endPath) {
+                            if (pendingIsClip && pendingPaths.length) lastClipPaths = pendingPaths;
+                            pendingPaths = [];
+                            pendingIsClip = false;
+                        } else if (DETECT_INLINE_VECTOR && PAINT_PATH_FNS.has(fn)) {
+                            for (const p of pendingPaths) vectorPaints.push(p);
+                            pendingPaths = [];
+                            pendingIsClip = false;
+                        } else if (DETECT_INLINE_VECTOR && OPS.shadingFill !== undefined && fn === OPS.shadingFill) {
+                            // sh fills the current clip region: use the clip path box.
+                            for (const p of lastClipPaths) vectorPaints.push(p);
+                        }
                     }
-                }
+
+                    // ------------------------------------------------------
+                    // Pass 2: render the page once at high scale with padding,
+                    // convert every candidate to a render-space box, merge,
+                    // then filter and trim the merged regions.
+                    // ------------------------------------------------------
                     const renderScale = 3.0;
                     const baseViewport = page.getViewport({ scale: renderScale });
                     const aspectRatio = baseViewport.width / baseViewport.height;
@@ -1918,123 +2567,136 @@
                     await page.render({ canvasContext: pageCtx, viewport: renderViewport }).promise;
                     pageCtx.setTransform(1, 0, 0, 1, 0, 0);
                     const textBoxes = computeTextBoxesInRenderSpace(textContent, renderViewport).map(box => ({ x: box.x + marginPad, y: box.y + marginPad, w: box.w, h: box.h }));
-                const initialCrops = [];
-                // Raster images
-                for (const paint of imagePaints) {
-                    try {
-                        let isMask = false;
-                        if (!paint.inline && paint.arg) {
-                            const obj = page.objs.get(paint.arg);
-                            if (obj && obj.isMask) isMask = true;
-                        }
-                        if (isMask) continue;
-                        const t1 = multiplyMatrices(viewport.transform, paint.ctm);
-                        const p1 = applyToPoint(t1, 0, 0);
-                        const p2 = applyToPoint(t1, 1, 0);
-                        const p3 = applyToPoint(t1, 0, 1);
-                        const p4 = applyToPoint(t1, 1, 1);
-                        const minX1 = Math.min(p1.x, p2.x, p3.x, p4.x);
-                        const minY1 = Math.min(p1.y, p2.y, p3.y, p4.y);
-                        const maxX1 = Math.max(p1.x, p2.x, p3.x, p4.x);
-                        const maxY1 = Math.max(p1.y, p2.y, p3.y, p4.y);
-                        const dispWidth1 = Math.max(0, maxX1 - minX1);
-                        const dispHeight1 = Math.max(0, maxY1 - minY1);
-                        if (dispWidth1 * dispHeight1 < minPixelArea) continue;
-                        const ar = dispWidth1 / Math.max(1, dispHeight1);
-                        if (skipTables && (ar > 4 || ar < 0.25)) continue; // skip likely tables
-                const tr = multiplyMatrices(renderViewport.transform, paint.ctm);
-                const q1 = applyToPoint(tr, 0, 0);
-                const q2 = applyToPoint(tr, 1, 0);
-                const q3 = applyToPoint(tr, 0, 1);
-                const q4 = applyToPoint(tr, 1, 1);
-                let minX = Math.floor(Math.min(q1.x, q2.x, q3.x, q4.x));
-                let minY = Math.floor(Math.min(q1.y, q2.y, q3.y, q4.y));
-                let maxX = Math.ceil(Math.max(q1.x, q2.x, q3.x, q4.x));
-                let maxY = Math.ceil(Math.max(q1.y, q2.y, q3.y, q4.y));
-                // Adjust for margin padding used in render
-                minX += marginPad; minY += marginPad; maxX += marginPad; maxY += marginPad;
-                // Clamp to expanded canvas bounds
-                minX = Math.max(0, minX); minY = Math.max(0, minY);
-                maxX = Math.min(pageCanvas.width, maxX); maxY = Math.min(pageCanvas.height, maxY);
-                let cropW = Math.max(1, maxX - minX);
-                let cropH = Math.max(1, maxY - minY);
-                if (cropW <= 1 || cropH <= 1) continue;
-                const inset = 0;
-                minX += inset; minY += inset; cropW -= inset * 2; cropH -= inset * 2;
-                if (cropW <= 1 || cropH <= 1) continue;
-                // Defer trimming until after merging (match ExtractFigures)
-                initialCrops.push({ x: minX, y: minY, w: cropW, h: cropH });
-                    } catch (paintErr) {
-                        addWarning('pdf-raster-image', paintErr.message || String(paintErr), { page: pageNum });
-                    }
-                }
-                // Vector figures (Form XObjects)
-                for (const form of formPaints) {
-                    try {
-                        const [bx1, by1, bx2, by2] = form.bbox;
-                        const t1 = multiplyMatrices(viewport.transform, form.ctm);
-                        const v1 = applyToPoint(t1, bx1, by1);
-                        const v2 = applyToPoint(t1, bx2, by1);
-                        const v3 = applyToPoint(t1, bx1, by2);
-                        const v4 = applyToPoint(t1, bx2, by2);
-                        const minX1 = Math.min(v1.x, v2.x, v3.x, v4.x);
-                        const minY1 = Math.min(v1.y, v2.y, v3.y, v4.y);
-                        const maxX1 = Math.max(v1.x, v2.x, v3.x, v4.x);
-                        const maxY1 = Math.max(v1.y, v2.y, v3.y, v4.y);
-                        const dispWidth1 = Math.max(0, maxX1 - minX1);
-                        const dispHeight1 = Math.max(0, maxY1 - minY1);
-                        if (dispWidth1 * dispHeight1 < minPixelArea) continue;
-                        // Compute crop in render space
-                        const tr = multiplyMatrices(renderViewport.transform, form.ctm);
-                        const q1 = applyToPoint(tr, bx1, by1);
-                        const q2 = applyToPoint(tr, bx2, by1);
-                        const q3 = applyToPoint(tr, bx1, by2);
-                        const q4 = applyToPoint(tr, bx2, by2);
-                        let minX = Math.floor(Math.min(q1.x, q2.x, q3.x, q4.x));
-                        let minY = Math.floor(Math.min(q1.y, q2.y, q3.y, q4.y));
-                        let maxX = Math.ceil(Math.max(q1.x, q2.x, q3.x, q4.x));
-                        let maxY = Math.ceil(Math.max(q1.y, q2.y, q3.y, q4.y));
-                        minX += marginPad; minY += marginPad; maxX += marginPad; maxY += marginPad;
+                    const textLines = buildTextLines(textContent, renderViewport, marginPad);
+                    const pageHasFigureCaption = textLines.some(line => FIGURE_CAPTION_RE.test(line.text));
+                    const renderedPageArea = baseViewport.width * baseViewport.height;
+
+                    const toRenderCrop = (matrix, x1, y1, x2, y2) => {
+                        const tr = multiplyMatrices(renderViewport.transform, matrix);
+                        const bb = transformedBBox(tr, x1, y1, x2, y2);
+                        let minX = Math.floor(bb.minX) + marginPad;
+                        let minY = Math.floor(bb.minY) + marginPad;
+                        let maxX = Math.ceil(bb.maxX) + marginPad;
+                        let maxY = Math.ceil(bb.maxY) + marginPad;
                         minX = Math.max(0, minX); minY = Math.max(0, minY);
                         maxX = Math.min(pageCanvas.width, maxX); maxY = Math.min(pageCanvas.height, maxY);
-                        let cropW = Math.max(1, maxX - minX);
-                        let cropH = Math.max(1, maxY - minY);
-                        if (cropW <= 1 || cropH <= 1) continue;
-                        initialCrops.push({ x: minX, y: minY, w: cropW, h: cropH });
-                    } catch (formErr) {
-                        addWarning('pdf-vector-form', formErr.message || String(formErr), { page: pageNum });
+                        const w = maxX - minX, h = maxY - minY;
+                        if (w <= 1 || h <= 1) return null;
+                        return { x: minX, y: minY, w, h };
+                    };
+
+                    const initialCrops = [];
+                    const hairlineBoxes = [];
+                    for (const paint of imagePaints) {
+                        try {
+                            const crop = toRenderCrop(paint.ctm, 0, 0, 1, 1);
+                            if (crop) initialCrops.push(crop);
+                        } catch (paintErr) {
+                            addWarning('pdf-raster-image', paintErr.message || String(paintErr), { page: pageNum });
+                        }
                     }
-                }
-                    if (initialCrops.length === 0) continue;
-                const mergedCrops = mergeImageBoxes(initialCrops, textBoxes);
-                for (const crop of mergedCrops) {
-                    let { x: cx, y: cy, w: cw, h: ch } = crop;
-                    if (cw <= 1 || ch <= 1) continue;
-                    const tempCanvas = document.createElement('canvas');
-                    tempCanvas.width = cw; tempCanvas.height = ch;
-                    tempCanvas.getContext('2d').drawImage(pageCanvas, cx, cy, cw, ch, 0, 0, cw, ch);
-                    const MAX_DIM = 1024;
-                    const scale = Math.min(MAX_DIM / cw, MAX_DIM / ch, 1);
-                    const newWidth = Math.round(cw * scale);
-                    const newHeight = Math.round(ch * scale);
-                    const finalCanvas = document.createElement('canvas');
-                    finalCanvas.width = newWidth; finalCanvas.height = newHeight;
-                    finalCanvas.getContext('2d').drawImage(tempCanvas, 0, 0, newWidth, newHeight);
-                    const blob = await new Promise(resolve => finalCanvas.toBlob(resolve, 'image/png'));
-                    if (!blob) continue;
-                    const { title, caption } = (typeof extractCaption === 'function') ? extractCaption(textContent.items) : { title: '', caption: '' };
-                    extractedFigures.push({
-                        page: pageNum, width: newWidth, height: newHeight, blob, url: URL.createObjectURL(blob),
-                        bbox: { x: cx, y: cy, w: cw, h: ch },
-                        filename: suggestFilename(title, pageNum), title, caption, selected: true
-                    });
-                }
+                    for (const form of formPaints) {
+                        try {
+                            // Forms without an accessible bbox fall back to the unit
+                            // square; merged-region filtering decides whether to keep.
+                            const [bx1, by1, bx2, by2] = form.hasBBox ? form.bbox : [0, 0, 1, 1];
+                            const crop = toRenderCrop(form.ctm, bx1, by1, bx2, by2);
+                            if (crop) initialCrops.push(crop);
+                        } catch (formErr) {
+                            addWarning('pdf-vector-form', formErr.message || String(formErr), { page: pageNum });
+                        }
+                    }
+                    for (const vec of vectorPaints) {
+                        try {
+                            const crop = toRenderCrop(vec.ctm, vec.bbox.minX, vec.bbox.minY, vec.bbox.maxX, vec.bbox.maxY);
+                            if (!crop) continue;
+                            // Hairlines (rules, borders, axis lines) must not SEED
+                            // regions - table rules would create false figures - but
+                            // they are kept so refineFigureRegions can absorb axes
+                            // and arrows into an adjacent real figure region.
+                            if (crop.w < 3 || crop.h < 3) { if (hairlineBoxes.length < 600) hairlineBoxes.push(crop); continue; }
+                            // Near-page-size vector boxes are backgrounds/frames; merging
+                            // them would swallow the whole page into one "figure".
+                            if (crop.w * crop.h > renderedPageArea * 0.85) continue;
+                            initialCrops.push(crop);
+                        } catch (vecErr) {
+                            addWarning('pdf-vector-path', vecErr.message || String(vecErr), { page: pageNum });
+                        }
+                    }
+
+                    let keptForPage = 0;
+                    if (initialCrops.length > 0) {
+                        const mergedCrops = mergeImageBoxes(initialCrops, textBoxes);
+                        const regions = refineFigureRegions({
+                            mergedCrops, initialCrops, textBoxes, textLines, hairlineBoxes,
+                            pageWidth: baseViewport.width, pageHeight: baseViewport.height,
+                            canvasHeight: pageCanvas.height, renderedPageArea, skipTables
+                        });
+                        const whiskerPad = Math.round(Math.min(baseViewport.width, baseViewport.height) * 0.015);
+                        for (const region of regions) {
+                            region.x = Math.round(region.x); region.y = Math.round(region.y);
+                            region.w = Math.round(region.w); region.h = Math.round(region.h);
+                            const padded = {
+                                x: Math.max(0, region.x - whiskerPad),
+                                y: Math.max(0, region.y - whiskerPad),
+                                w: Math.min(pageCanvas.width - Math.max(0, region.x - whiskerPad), region.w + whiskerPad * 2),
+                                h: Math.min(pageCanvas.height - Math.max(0, region.y - whiskerPad), region.h + whiskerPad * 2)
+                            };
+                            const crop = shrinkCropToAvoidText(padded, textBoxes);
+                            let { x: cx, y: cy, w: cw, h: ch } = crop;
+                            if (cw <= 1 || ch <= 1) continue;
+                            const tempCanvas = document.createElement('canvas');
+                            tempCanvas.width = cw; tempCanvas.height = ch;
+                            tempCanvas.getContext('2d').drawImage(pageCanvas, cx, cy, cw, ch, 0, 0, cw, ch);
+                            const MAX_DIM = 1024;
+                            const scale = Math.min(MAX_DIM / cw, MAX_DIM / ch, 1);
+                            const newWidth = Math.round(cw * scale);
+                            const newHeight = Math.round(ch * scale);
+                            const finalCanvas = document.createElement('canvas');
+                            finalCanvas.width = newWidth; finalCanvas.height = newHeight;
+                            finalCanvas.getContext('2d').drawImage(tempCanvas, 0, 0, newWidth, newHeight);
+                            const blob = await new Promise(resolve => finalCanvas.toBlob(resolve, 'image/png'));
+                            if (!blob) continue;
+                            const title = region.title || extractCaption(textLines, crop, pageCanvas.height).title;
+                            const caption = region.caption || '';
+                            extractedFigures.push({
+                                page: pageNum, width: newWidth, height: newHeight, blob, url: URL.createObjectURL(blob),
+                                bbox: { x: cx, y: cy, w: cw, h: ch },
+                                filename: suggestFilename(title, pageNum), title, caption, selected: true
+                            });
+                            keptForPage++;
+                        }
+                    }
+                    if (AI_FIGURE_FALLBACK && pageHasFigureCaption && keptForPage === 0) {
+                        aiFallbackPages.push(pageNum);
+                    }
                     } catch (pageErr) {
                         addWarning('pdf-page', `Skipped page ${pageNum}: ${pageErr.message || pageErr}`, { page: pageNum });
                         continue;
                     }
                 }
+
+                // AI-vision fallback for pages with a caption but no detected crop.
+                if (AI_FIGURE_FALLBACK && aiFallbackPages.length) {
+                    const pages = aiFallbackPages.slice(0, AI_FALLBACK_MAX_PAGES);
+                    for (const pageNum of pages) {
+                        try {
+                            const page = await pdf.getPage(pageNum);
+                            const found = await aiDetectFiguresOnPage(page, pageNum);
+                            for (const fig of found) extractedFigures.push(fig);
+                            if (found.length) addWarning('pdf-ai-fallback', `AI fallback located ${found.length} figure(s) on page ${pageNum}; please review the crops.`, { page: pageNum });
+                        } catch (aiErr) {
+                            addWarning('pdf-ai-fallback', `AI figure fallback failed on page ${pageNum}: ${aiErr.message || aiErr}`, { page: pageNum });
+                        }
+                    }
+                }
+
+                // Keep review-grid and filename ordering in page order regardless of
+                // when a figure was found (main pass vs AI fallback).
+                extractedFigures.sort((a, b) => ((+a.page || 0) - (+b.page || 0)) || ((a.bbox?.y || 0) - (b.bbox?.y || 0)));
+
                 updateFxProgress(100);
+                fxStatus('');
                 attachFxListeners();
                 displayFxResults();
             } catch (err) {
@@ -2045,7 +2707,9 @@
             }
         }
 
-        // Vector figures via Form XObjects are now captured too
+        // Figure detection now covers: raster XObjects, inline images, image masks
+        // (incl. groups/repeats), Form XObjects (with or without bbox), inline
+        // vector path drawings, and an AI-vision fallback for caption-only pages.
 
         // --------------------------------------------------------------- 
         // CONVERSION PROMPT
@@ -2064,7 +2728,7 @@ Use <PUBLICATION_DATE>YYYY-MM-DD</PUBLICATION_DATE> if date is available.
 
 Use <ABSTRACT>...</ABSTRACT> if there is an abstract. Only include this if you are sure a given chunk of text is actually the abstract.
 
-Use <PLAINTEXT>...</PLAINTEXT> ALWAYS to give a VERY ACCURATE but New Yorker style interpretation of the most important results of the paper. It should be in the format: 1) What is the main question? 2) How do we answer it? 3) What do we find? 4) Why should we care? If the paper is particularly technical, consider this a Quanta magazine rather than a New Yorker magazine style of interpretation. Do NOT state those four questions - just write in a way that answers them. DO NOT say things 'the paper states' and 'the authors construct' - write it like John Brooks or John McPhee was describing the paper as clearly as possible, that a layman would understand (or if a very technical paper, that someone in the field who isn't is a specialist would understand). This should be 200-300 words, GOOD WRITING, and very interesting.
+Use <PLAINTEXT>...</PLAINTEXT> ALWAYS to give a VERY ACCURATE but New Yorker style interpretation of the most important results of the paper. It should be in the format: 1) What is the main question? 2) How do we answer it? 3) What do we find? 4) Why should we care? If the paper is particularly technical, consider this a Quanta magazine rather than a New Yorker magazine style of interpretation. Do NOT state those four questions - just write in a way that answers them. DO NOT say things 'the paper states' and 'the authors construct' - write it like John Brooks or John McPhee was describing the paper as clearly as possible, that a layman would understand (or if a very technical paper, that someone in the field who isn't a specialist would understand). This should be 200-300 words, GOOD WRITING, and very interesting.
 
 Headings:
 
@@ -2074,9 +2738,11 @@ Use <SUBSECTION ref="subsec_id">Subsection Title</SUBSECTION> at the start of su
 
 Use <SUBSUBSECTION ref="subsubsec_id">Subsubsection Title</SUBSUBSECTION> for sub-subsections.
 
+If the paper numbers its sections/subsections (e.g. "1", "1.1", "2.3.1", "A.1", "IV"), INCLUDE that number at the start of the title text exactly as it appears, e.g. <SECTION ref="sec_intro">1 Introduction</SECTION> or <SUBSECTION ref="subsec_setup">2.1 Setup</SUBSECTION>. If a section is unnumbered in the paper, do not invent a number.
+
 Text:
 
-Leave plain text unwrapped.  Lists, italics, etc. should be be converted to <li> <i> etc. with proper closure.
+Leave plain text unwrapped.  Lists, italics, etc. should be converted to <li> <i> etc. with proper closure.
 
 Use paragraph breaks (\\n\\n) between paragraphs. Do not wrap in <P> or any block tag.
 
@@ -2088,7 +2754,7 @@ Wrap display/full-line equations in <FULL_LINE_EQUATION ref="eq_id"> <MATH>...</
 
 Formal Content:
 
-Use semantic tags with ref attributes. These should began with EXAMPLE 3 or PROPOSITION 1 or similar if they are numbered in the text.
+Use semantic tags with ref attributes. The text inside should begin with the label as it appears in the paper, e.g. EXAMPLE 3 or PROPOSITION 1, if the item is numbered in the text.
 
 <THEOREM ref="thm_id">...</THEOREM>
 
@@ -2106,6 +2772,8 @@ Use semantic tags with ref attributes. These should began with EXAMPLE 3 or PROP
 
 <EXAMPLE ref="ex_id">...</EXAMPLE>
 
+<REMARK ref="rem_id">...</REMARK>
+
 Citations & Footnotes:
 
 <CITATION ref="cite_id" title="The Title of the Paper" authors="Author 1, Author 2, and Author 3" year="year" journal="Journal Name">Bryan et al. (2019)</CITATION>
@@ -2118,22 +2786,28 @@ Do NOT include the superscript for a footnote when you are transcribing the docu
 
 Tables:
 <TABLE ref="tbl_id">
+  <CAPTION>Table 1: The table's title/caption as it appears in the paper</CAPTION>
   <thead>
     <tr><th>Header1</th><th>Header2</th></tr>
   </thead>
   <tbody>
     <tr><td>Row1Col1</td><td>Row1Col2</td></tr>
   </tbody>
+  <NOTES>Any notes printed under the table (e.g. "Standard errors in parentheses. * p&lt;0.10").</NOTES>
 </TABLE>
+
+Put the table title in <CAPTION> and any footnote/notes line printed beneath the table in <NOTES>; do not put either inside table cells. You may use colspan and rowspan attributes on th/td when the original table spans cells.
 
 Figures:
 
 <FIGURE ref="fig_id">
-  <CAPTION>Figure caption</CAPTION>
-  <IMG src="fig_id.png">
+  <CAPTION>Figure 1: The full caption text exactly as printed, including the "Figure N:" label. Wrap any mathematics in <MATH>...</MATH> tags exactly as you do elsewhere, e.g. coverage <MATH>q</MATH> and accuracy <MATH>a</MATH>.</CAPTION>
+  <IMG src="fig_1.png" />
 </FIGURE>
 
-Figures should always be named fig_1.png, fig_2.png, etc., in line with the original paper.
+Transcribe the COMPLETE figure caption into <CAPTION> exactly as printed in the paper (including the "Figure N:" prefix and any panel descriptions), and wrap every mathematical symbol or expression in it in <MATH> tags, just like the body text. Do not paraphrase or shorten captions.
+
+If figure image files are provided with this request, use those EXACT filenames in <IMG src> (they are listed alongside the images); match each figure to its image by comparing the image content and caption to the paper. Do not invent filenames. If no image file corresponds to a figure, still emit the FIGURE and CAPTION with your best-guess src of the form fig_N.png so it can be added later.
 
 Appendices:
 
@@ -2148,9 +2822,9 @@ Short Example Output
 <AUTHORS>Jane Doe, John Smith</AUTHORS>
 <PUBLICATION_DATE>2022-06-01</PUBLICATION_DATE>
 
-We study optimal tax policy in incomplete markets with borrowing constraints.<FOOTNOTE ref="fn1">We thank seminar participants at MIT and Princeton.</FOOTNOTE> The problem is to figure out how consumers borrow, drawing on <CITATION ref="cite_1" title="Idiosyncratic Risk" authors="Aiyagari Rao" year="1994" journal="Quarterly Journal of Economics">Bryan et al. (2019)</CITATION> shows how precautionary savings affect wealth distribution.
+We study optimal tax policy in incomplete markets with borrowing constraints.<FOOTNOTE ref="fn1">We thank seminar participants at MIT and Princeton.</FOOTNOTE> The problem is to figure out how consumers borrow: <CITATION ref="cite_1" title="Uninsured Idiosyncratic Risk and Aggregate Saving" authors="S. Rao Aiyagari" year="1994" journal="Quarterly Journal of Economics">Aiyagari (1994)</CITATION> shows how precautionary savings affect the wealth distribution.
 
-<SECTION ref="sec_model">Model</SECTION>
+<SECTION ref="sec_model">2 Model</SECTION>
 Agents face idiosyncratic income risk and choose <MATH>c_t</MATH> and <MATH>a_{t+1}</MATH> to maximize utility:
 
 <FULL_LINE_EQUATION ref="eq1">
@@ -2173,27 +2847,22 @@ subject to a series of constraints.
   </tbody>
 </TABLE>
 
-So now what one can see in <a href="#fig1">Figure 1</a> is that, as noted in <a href="#sec_model">Section 1</a>, we have no need to consider further issues. 
+So now what one can see in <a href="#fig_1">Figure 1</a> is that, as noted in <a href="#sec_model">Section 1</a>, we have no need to consider further issues. 
 
-<FIGURE ref="fig1">
-  <CAPTION>Welfare across tax regimes</CAPTION>
-  <IMG src="fig1_welfare.png" />
-</FIGURE> shows how precautionary savings affect wealth distribution.`;
+<FIGURE ref="fig_1">
+  <CAPTION>Figure 1: Welfare across tax regimes</CAPTION>
+  <IMG src="fig_1.png" />
+</FIGURE>`;
 
         // --------------------------------------------------------------- 
         // API KEY MANAGEMENT
         // ---------------------------------------------------------------
 
-async function ensureLocalKey() {
+// Keys are NEVER stored: no server-side key, no proxy, no localStorage/cookies.
+// Every user (on any host, including localhost) pastes their own free Gemini key
+// once per session; it lives only in this in-memory variable and dies with the tab.
+async function ensureSessionKey() {
   if (sessionApiKey) return sessionApiKey;
-
-  // Only prompt on localhost/127.0.0.1
-  const host = location.hostname;
-  const isLocal = host === 'localhost' || host === '127.0.0.1';
-
-  if (!isLocal) {
-    throw new Error('Proxy required (no key exposed in production).');
-  }
 
   return new Promise((resolve) => {
     apiKeyModal.classList.add('visible');
@@ -2207,46 +2876,33 @@ async function ensureLocalKey() {
       }
     };
     apiKeySubmit.onclick = submit;
-    apiKeyInput.onkeypress = (e) => { if (e.key === 'Enter') submit(); };
+    apiKeyInput.onkeydown = (e) => { if (e.key === 'Enter' && !e.isComposing) submit(); };
   });
 }
 
-async function postGemini(payload) {
-  // 1) Try server-side proxy first so no key is exposed in production.
-  try {
-    const res = await fetch('gemini-proxy.php', {
+async function postGemini(payload, isRetryAfterBadKey = false) {
+  const key = await ensureSessionKey();
+  const model = payload.model || 'gemini-3-flash-preview';
+  const direct = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(key)}`,
+    {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-    const raw = await res.text();
-    if (res.ok) {
-      try { return JSON.parse(raw); }
-      catch { throw new Error('Proxy returned non-JSON from Gemini:\n' + raw.slice(0, 500)); }
+      body: JSON.stringify({ ...payload, model: undefined })
+    }
+  );
+
+  const raw = await direct.text();
+  if (!direct.ok) {
+    // An invalid/expired key should re-prompt rather than dead-end the session.
+    if ((direct.status === 400 || direct.status === 401 || direct.status === 403) && /api key/i.test(raw) && !isRetryAfterBadKey) {
+      sessionApiKey = '';
+      return postGemini(payload, true);
     }
     throw new Error(parseApiError(raw));
-  } catch (err) {
-    // 2) If the proxy is unavailable locally, fall back to direct Google call using a prompted key.
-    const host = location.hostname;
-    const isLocal = host === 'localhost' || host === '127.0.0.1';
-    if (!isLocal) throw err;
-
-    const key = await ensureLocalKey();
-    const model = payload.model || 'gemini-3-flash-preview';
-    const direct = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(key)}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...payload, model: undefined })
-      }
-    );
-
-    const raw = await direct.text();
-    if (!direct.ok) throw new Error(parseApiError(raw));
-    try { return JSON.parse(raw); }
-    catch { throw new Error('Non-JSON from Gemini:\n' + raw.slice(0, 500)); }
   }
+  try { return JSON.parse(raw); }
+  catch { throw new Error('Non-JSON from Gemini:\n' + raw.slice(0, 500)); }
 }
 
 
@@ -2297,7 +2953,7 @@ async function postGemini(payload) {
             // If a 'data' URL parameter exists, load the XML from there
             if (dataUrl) {
                 try {
-                    const response = await fetch(dataUrl);
+                    const response = await fetch(dataUrl, { cache: 'no-cache' });
                     if (!response.ok) throw new Error(`Failed to fetch paper data from ${dataUrl}`);
                     let xmlText = await response.text();
                     
@@ -2352,33 +3008,17 @@ async function postGemini(payload) {
             uploadModal.style.display = 'block';
             loadingOverlay.style.display = 'none';
             
-            fileInput.addEventListener('change', async (e) => {
+            fileInput.addEventListener('change', (e) => {
                 const files = Array.from(e.target.files);
+                figuresReviewed = false;
                 if (files.length > 0) {
                     resetConversionArtifacts();
-                    uploadStatus.innerHTML = `<strong>Selected:</strong> ${files.map(f => escapeHTML(f.name)).join(', ')}<br>Click "Convert Paper" to proceed.`;
-                    convertBtn.style.display = 'block';
-                    // Trigger figure extraction for PDF/PPTX
-                    try {
-                        const pdf = files.find(f => /\.pdf$/i.test(f.name));
-                        const pptx = files.find(f => /\.pptx$/i.test(f.name));
-                        if (pdf || pptx) {
-                            fxOverlay.style.display = 'flex';
-                            if (pdf) await handlePDFForFX(pdf); else await handlePPTXForFX(pptx);
-                        } else {
-                            resetFigureUI();
-                            // No figures to review; kick off conversion automatically
-                            const btn = document.getElementById('convertBtn');
-                            if (btn && !btn.disabled) btn.click();
-                        }
-                    } catch (err) {
-                        addWarning('figure-extraction', err.message || String(err));
-                        console.error('Figure extraction error:', err);
-                    }
+                    resetFigureUI();
+                    fxOverlay.style.display = 'none';
+                    uploadStatus.innerHTML = `<strong>Selected:</strong> ${files.map(f => escapeHTML(f.name)).join(', ')}<br>Click "Convert Paper" to find figures and convert.`;
                 } else {
                     resetConversionArtifacts();
                     uploadStatus.textContent = '';
-                    convertBtn.style.display = 'none';
                     resetFigureUI();
                     fxOverlay.style.display = 'none';
                 }
@@ -2389,6 +3029,41 @@ async function postGemini(payload) {
                 if (!fileInput.files.length) {
                     uploadStatus.textContent = 'Please select a file first.';
                     return;
+                }
+
+                // Capture the API key entered alongside the file/URL, if any. The
+                // key lives only in memory for this session (postGemini still
+                // prompts later if this was left blank).
+                const typedKey = (document.getElementById('uploadApiKeyInput')?.value || '').trim();
+                if (typedKey) sessionApiKey = typedKey;
+
+                // Figure extraction is deferred until the user clicks Convert (not
+                // when the file is added). Run it now, show the review modal, and
+                // return; the modal's "Done"/"Skip Figures" buttons re-invoke this
+                // handler with figuresReviewed set, which proceeds to conversion.
+                if (!figuresReviewed) {
+                    const files0 = Array.from(fileInput.files);
+                    const pdf = files0.find(f => /\.pdf$/i.test(f.name));
+                    const pptx = files0.find(f => /\.pptx$/i.test(f.name));
+                    if (pdf || pptx) {
+                        try {
+                            resetConversionArtifacts();
+                            fxOverlay.style.display = 'flex';
+                            if (pdf) await handlePDFForFX(pdf); else await handlePPTXForFX(pptx);
+                            // Extraction done: the figure review modal is now up.
+                            // Wait for the user to accept it before converting.
+                            figuresReviewed = true;
+                            return;
+                        } catch (err) {
+                            addWarning('figure-extraction', err.message || String(err));
+                            console.error('Figure extraction error:', err);
+                            fxOverlay.style.display = 'none';
+                            figuresReviewed = true;
+                            // fall through to conversion without figures
+                        }
+                    } else {
+                        figuresReviewed = true; // no figures to review
+                    }
                 }
 
                 // Update UI to show processing state
@@ -2437,39 +3112,60 @@ async function postGemini(payload) {
                     }
                     const imagesInstruction = selectedImages.length ? `\n\nFigures: I am including figure image files. Use these exact filenames in <IMG src> where appropriate, and reference them in order of appearance in the text: ${selectedImages.map(f=>f.filename).join(', ')}.` : '';
 
-                    setProcessingStatus('Sending paper to Gemini...', 'Gemini 3 thinking is capped at medium and temperature is 1. Raw output is saved before validation.');
+                    setProcessingStatus('Extracting paper with AI. This generally takes under one minute.', '');
 const conversionModel = 'gemini-3-flash-preview';
 const conversionGenerationConfig = {
-  // Gemini 3 defaults to high/dynamic thinking. For XML extraction, cap it.
-  // This preserves enough reasoning for layout/structure without burning the
-  // output budget before the XML is complete.
+  // Google's Gemini 3 docs strongly recommend keeping temperature at the
+  // default 1.0: lowering it can cause looping or degraded performance
+  // (https://ai.google.dev/gemini-api/docs/gemini-3). Thinking is capped at
+  // medium so reasoning does not burn the output budget before the XML is
+  // complete.
   temperature: 1,
   maxOutputTokens: 65000,
   thinkingConfig: { thinkingLevel: 'medium' }
 };
 window.conversionArtifacts.model = conversionModel;
 window.conversionArtifacts.requestedGenerationConfig = conversionGenerationConfig;
-const responseData = await postGemini({
-  model: conversionModel,
-  contents: [{ parts: [{ text: CONVERSION_PROMPT + imagesInstruction }, ...fileParts, ...imageParts] }],
-  generationConfig: conversionGenerationConfig
-});
-window.conversionArtifacts.usageMetadata = responseData?.usageMetadata || {};
-if (window.conversionArtifacts.usageMetadata?.thoughtsTokenCount) {
-  addWarning('gemini-usage', 'Gemini reported internal thinking tokens in usage metadata.', {
-    thoughtsTokenCount: window.conversionArtifacts.usageMetadata.thoughtsTokenCount,
-    candidatesTokenCount: window.conversionArtifacts.usageMetadata.candidatesTokenCount,
-    totalTokenCount: window.conversionArtifacts.usageMetadata.totalTokenCount
-  });
+
+// Long papers can exhaust maxOutputTokens mid-XML. When the model stops with
+// MAX_TOKENS, ask it to continue exactly where it left off (up to twice) and
+// stitch the pieces before envelope repair, instead of shipping a truncated file.
+const basePromptParts = [{ text: CONVERSION_PROMPT + imagesInstruction }, ...fileParts, ...imageParts];
+let accumulatedText = '';
+let finishReason = '';
+for (let attempt = 0; attempt < 3; attempt++) {
+    const contents = [{ role: 'user', parts: basePromptParts }];
+    if (accumulatedText) {
+        contents.push({ role: 'model', parts: [{ text: accumulatedText }] });
+        contents.push({ role: 'user', parts: [{ text: 'Your XML output was cut off by the output token limit. Continue the XML EXACTLY from the character where you stopped. Output ONLY the remaining XML with no preamble, no markdown fences, and do not repeat anything you already produced.' }] });
+        setProcessingStatus(`Output hit the token limit; requesting continuation ${attempt} of 2...`, 'Long papers are stitched together from multiple responses.');
+    }
+    const responseData = await postGemini({
+        model: conversionModel,
+        contents,
+        generationConfig: conversionGenerationConfig
+    });
+    window.conversionArtifacts.usageMetadata = responseData?.usageMetadata || {};
+    if (window.conversionArtifacts.usageMetadata?.thoughtsTokenCount) {
+        addWarning('gemini-usage', 'Gemini reported internal thinking tokens in usage metadata.', {
+            thoughtsTokenCount: window.conversionArtifacts.usageMetadata.thoughtsTokenCount,
+            candidatesTokenCount: window.conversionArtifacts.usageMetadata.candidatesTokenCount,
+            totalTokenCount: window.conversionArtifacts.usageMetadata.totalTokenCount
+        });
+    }
+    const modelOutput = extractGeminiText(responseData);
+    accumulatedText += (accumulatedText ? '\n' : '') + stripMarkdownFences(modelOutput.text);
+    finishReason = modelOutput.finishReason;
+    if (finishReason !== 'MAX_TOKENS') break;
+    if (attempt === 2) addWarning('gemini-finish', 'The model still hit the output limit after two continuations; the XML may be incomplete.', {});
 }
                     console.log('Received response from Gemini conversion');
                     setProcessingStatus('Received model output. Validating XML...', 'Saving the raw response first so nothing is lost if validation fails.');
 
-                    const modelOutput = extractGeminiText(responseData);
-                    let xmlText = modelOutput.text;
+                    let xmlText = accumulatedText;
                     window.rawModelOutput = xmlText;
                     window.conversionArtifacts.rawModelOutput = xmlText;
-                    window.conversionArtifacts.finishReason = modelOutput.finishReason;
+                    window.conversionArtifacts.finishReason = finishReason;
 
                     const prepared = prepareXmlForRendering(xmlText, { source: 'conversion' });
                     xmlText = prepared.xmlText;
@@ -2484,10 +3180,45 @@ if (window.conversionArtifacts.usageMetadata?.thoughtsTokenCount) {
 
                     setProcessingStatus('Rendering paper...', 'The XML and selected images are already available for download.');
                     currentPaperXML = prepared.xmlDoc || parseXmlOrThrow(xmlText);
+
+                    // If the user supplied the original PDF's URL, inject a <PDF> tag
+                    // (rendered as a [PDF] link in the header) client-side so the
+                    // model never has to guess it.
+                    const pdfUrlValue = (document.getElementById('pdfUrlInput')?.value || '').trim();
+                    if (pdfUrlValue && /^https?:\/\//i.test(pdfUrlValue) && !currentPaperXML.querySelector('PDF')) {
+                        const pdfEl = currentPaperXML.createElement('PDF');
+                        pdfEl.textContent = pdfUrlValue;
+                        currentPaperXML.documentElement.insertBefore(pdfEl, currentPaperXML.documentElement.firstChild);
+                        xmlText = new XMLSerializer().serializeToString(currentPaperXML);
+                        window.generatedXML = xmlText;
+                        window.conversionArtifacts.xmlText = xmlText;
+                        window.conversionArtifacts.repairedXmlText = xmlText;
+                    } else if (pdfUrlValue && !/^https?:\/\//i.test(pdfUrlValue)) {
+                        addWarning('pdf-url', 'The PDF URL was ignored because it is not an http(s) link.', { pdfUrlValue });
+                    }
+
+                    // Validate figure references both ways so filename mismatches are
+                    // caught immediately instead of surfacing as broken images later.
+                    const referencedSrcs = new Set();
+                    (xmlText.match(/<IMG[^>]*src="([^"]+)"/gi) || []).forEach(tag => {
+                        const src = tag.match(/src="([^"]+)"/i)?.[1];
+                        if (src) referencedSrcs.add(src);
+                    });
+                    const providedNames = new Set(selectedImages.map(f => f.filename));
+                    referencedSrcs.forEach(src => {
+                        if (!providedNames.has(src)) addWarning('figure-check', `The XML references image "${src}", which is not among the extracted figures. Rename the image file or edit the XML before hosting.`, { src });
+                    });
+                    providedNames.forEach(name => {
+                        if (!referencedSrcs.has(name)) addWarning('figure-check', `Extracted figure "${name}" is never referenced in the XML. It may belong to a figure the model skipped.`, { name });
+                    });
+
                     extractPaperText();
                     renderPaperFromXML();
                     buildTOCFromXML();
-                    showConversionBanner(prepared.warnings);
+                    const extraBannerWarnings = (window.conversionArtifacts?.warnings || [])
+                        .filter(w => w.stage === 'figure-check' || w.stage === 'pdf-url')
+                        .map(w => w.message);
+                    showConversionBanner([...prepared.warnings, ...extraBannerWarnings]);
 
                 } catch (err) {
                     addConversionError('conversion', err, { hasRawOutput: !!window.rawModelOutput, hasXml: !!window.generatedXML });
@@ -2509,18 +3240,44 @@ if (window.conversionArtifacts.usageMetadata?.thoughtsTokenCount) {
         // XML CONTENT TRANSFORMATION HELPERS
         // ---------------------------------------------------------------
         function transformXMLContent(xmlStr) {
+            // TeX inside <MATH>/<FULL_LINE_EQUATION> may already carry math
+            // delimiters (\(...\), \[...\], $...$, $$...$$). Since wrapping is added
+            // below, nested delimiters would render literally (e.g. "\(x\)" shown as
+            // text inside a $$...$$ block). Strip any leading/trailing wrap here.
+            const stripMathDelims = (t) => {
+                let s = String(t).trim();
+                let changed = true;
+                while (changed) {
+                    changed = false;
+                    const m = s.match(/^\\\[([\s\S]*)\\\]$/) || s.match(/^\\\(([\s\S]*)\\\)$/)
+                        || s.match(/^\$\$([\s\S]*)\$\$$/) || s.match(/^\$([\s\S]*)\$$/);
+                    if (m) { s = m[1].trim(); changed = true; }
+                }
+                return s;
+            };
+            // Display bodies cannot contain inline/display delimiter switches, and a
+            // body may carry them mid-string (e.g. "\(...\)(2)" with a trailing
+            // equation number). Remove any stray \( \) \[ \] and $ tokens.
+            const stripDisplayDelims = (t) => {
+                let s = stripMathDelims(t);
+                return s.replace(/\\[()[\]]/g, '').replace(/\$\$?/g, '').trim();
+            };
             /* 1. inline / display math ------------------------------------------ */
             xmlStr = xmlStr.replace(
-                /<FULL_LINE_EQUATION[^>]*ref="([^"]+)"[^>]*>\s*(?:<MATH>([\s\S]*?)<\/MATH>|([\s\S]*?))\s*<\/FULL_LINE_EQUATION>/gi,
-                (_, eqId, innerWithTag, innerRaw) => {
-                    const tex = (innerWithTag || innerRaw).trim();
-                    return `<div class="equation-display" id="${eqId}">$$${tex}$$</div>`;
+                /<FULL_LINE_EQUATION([^>]*)>\s*(?:<MATH>([\s\S]*?)<\/MATH>|([\s\S]*?))\s*<\/FULL_LINE_EQUATION>/gi,
+                (_, attrs, innerWithTag, innerRaw) => {
+                    // ref is optional: when the model omits it, synthesize an id so
+                    // display equations stay display equations instead of silently
+                    // degrading to inline math inside an unknown element.
+                    const eqId = attrs.match(/ref="([^"]+)"/i)?.[1] || `eq_auto_${++eqAutoCounter}`;
+                    const tex = stripDisplayDelims(innerWithTag || innerRaw);
+                    return `<div class="equation-display" id="${escapeAttr(eqId)}">$$${tex}$$</div>`;
                 }
             );
 
             xmlStr = xmlStr.replace(
                 /<MATH>([\s\S]*?)<\/MATH>/gi,
-                (_, tex) => `\\(${tex}\\)`
+                (_, tex) => `\\(${stripMathDelims(tex)}\\)`
             );
 
             // Preserve inline formatting and list tags (<b>, <i>, <em>, <strong>, <ul>, <ol>, <li>)
@@ -2563,8 +3320,12 @@ if (window.conversionArtifacts.usageMetadata?.thoughtsTokenCount) {
                 (_, tagName, attrs, content) => {
                     const ref = attrs.match(/ref="([^"]+)"/)?.[1] || '';
                     const className = tagName.toLowerCase();
+                    let body = content;
+                    if (className === 'proof' && !/^\s*(?:<[^>]+>\s*)*proof\b/i.test(body)) {
+                        body = `<span class="proof-label">Proof:</span> ${body.replace(/^\s+/, '')}`;
+                    }
                     return `<div class="${className}" ${ref ? `id="${ref}"` : ''}>
-                        ${content}
+                        ${body}
                     </div>`;
                 });
 
@@ -2572,7 +3333,8 @@ if (window.conversionArtifacts.usageMetadata?.thoughtsTokenCount) {
             xmlStr = xmlStr.replace(/<FIGURE([^>]*)>([\s\S]*?)<\/FIGURE>/gi,
                 (_, attrs, content) => {
                     const ref = attrs.match(/ref="([^"]+)"/)?.[1] || '';
-                    const cap = (content.match(/<CAPTION>([\s\S]*?)<\/CAPTION>/i)?.[1] || '').trim();
+                    let cap = (content.match(/<CAPTION>([\s\S]*?)<\/CAPTION>/i)?.[1] || '').trim();
+                    cap = cap.replace(/\$\$([\s\S]+?)\$\$/g, (_, t) => `\\[${t}\\]`).replace(/\$([^$]+?)\$/g, (_, t) => `\\(${t}\\)`);
                     let img = content.match(/<IMG[^>]*src="([^"]+)"[^>]*\/?>/i)?.[1] || '';
 
                     // Map to locally extracted blobs if present
@@ -2605,7 +3367,12 @@ if (window.conversionArtifacts.usageMetadata?.thoughtsTokenCount) {
                     const ref = attrs.match(/ref="([^"]+)"/)?.[1] || '';
                     let caption = '';
                     content = content.replace(/<CAPTION>([\s\S]*?)<\/CAPTION>/gi, (_, cap) => {
-                        caption = cap;
+                        caption = cap.replace(/\$\$([\s\S]+?)\$\$/g, (_, t) => `\\[${t}\\]`).replace(/\$([^$]+?)\$/g, (_, t) => `\\(${t}\\)`);
+                        return '';
+                    });
+                    let notes = '';
+                    content = content.replace(/<NOTES>([\s\S]*?)<\/NOTES>/gi, (_, n) => {
+                        notes = n.replace(/\$\$([\s\S]+?)\$\$/g, (_, t) => `\\[${t}\\]`).replace(/\$([^$]+?)\$/g, (_, t) => `\\(${t}\\)`);
                         return '';
                     });
                     
@@ -2624,9 +3391,10 @@ if (window.conversionArtifacts.usageMetadata?.thoughtsTokenCount) {
                         .replace(/<td>/gi, '<td>')
                         .replace(/<\/td>/gi, '</td>');
                     
-                    return `<div class="table-container" ${ref ? `id="${ref}"` : ''}>
-                        <table>${htmlTable}</table>
+                    return `<div class="table-container" ${ref ? `id="${escapeAttr(ref)}"` : ''}>
                         ${caption ? `<div class="table-caption">${caption}</div>` : ''}
+                        <table>${htmlTable}</table>
+                        ${notes ? `<div class="table-notes">${notes}</div>` : ''}
                     </div>`;
                 });
 
@@ -2634,14 +3402,55 @@ if (window.conversionArtifacts.usageMetadata?.thoughtsTokenCount) {
             xmlStr = xmlStr.replace(/<XREF[^>]*ref="([^"]+)"[^>]*>([\s\S]*?)<\/XREF>/gi,
                 (_, ref, text) => `<a href="#${ref}" class="xref">${text}</a>`);
 
+            // Self-enumerated list items: when a <li> already begins with its own
+            // marker like "(i)", "(a)", "1.", "iii)", "•", or "-", the CSS bullet is
+            // a redundant second marker. Flag those items so the marker is hidden;
+            // genuine unmarked lists keep their bullets. Runs after math/inline
+            // transforms so leading \(...\) math is skipped, not mistaken for text.
+            const SELF_ENUM_RE = /^\s*(?:[(\[]\s*(?:\d{1,3}|[a-zA-Z]|[ivxlIVXL]{1,5})\s*[)\].]|(?:\d{1,3}|[a-zA-Z]|[ivxlIVXL]{1,5})\s*[).]|[•·\-\u2013\u2014\u2022\u25E6\u2043])\s+/;
+            xmlStr = xmlStr.replace(/<li(\s[^>]*)?>([\s\S]*?)<\/li>/gi, (full, attrs, inner) => {
+                if (SELF_ENUM_RE.test(inner.replace(/^\s*<[^>]+>\s*/, m => /^\s*<(?:span|b|strong|em|i)\b/i.test(m) ? '' : m))) {
+                    return `<li class="self-enumerated"${attrs || ''}>${inner}</li>`;
+                }
+                return full;
+            });
+
             return xmlStr;
         }
 
         // --------------------------------------------------------------- 
         // XML PAPER RENDERING
         // ---------------------------------------------------------------
+        // Determine an appendix's display title and, if that title is drawn from a
+        // child node, that node (so the renderer can skip it and avoid repetition).
+        // Order: first-child SECTION element, else a leading heading-like text node,
+        // else a title derived from the ref attribute.
+        function computeAppendixTitle(node) {
+            const upper = (n) => String(n?.tagName || n?.nodeName || '').toUpperCase();
+            const isWs = (n) => n?.nodeType === 3 && !n.nodeValue.trim();
+            const firstEl = Array.from(node.childNodes).find(c => c.nodeType === 1);
+            if (firstEl && upper(firstEl) === 'SECTION') {
+                return { title: firstEl.textContent.trim() || 'Appendix', titleNode: firstEl };
+            }
+            let firstMeaningful = node.firstChild;
+            while (firstMeaningful && isWs(firstMeaningful)) firstMeaningful = firstMeaningful.nextSibling;
+            if (firstMeaningful && firstMeaningful.nodeType === 3) {
+                const t = firstMeaningful.nodeValue.trim().replace(/\s+/g, ' ');
+                const looksLikeHeading = /^(?:appendix\b|[A-Za-z]\.?\s+appendix\b)/i.test(t);
+                let nextEl = firstMeaningful.nextSibling;
+                while (nextEl && isWs(nextEl)) nextEl = nextEl.nextSibling;
+                if (t && looksLikeHeading && nextEl && nextEl.nodeType === 1 && t.length <= 80) {
+                    return { title: t, titleNode: firstMeaningful };
+                }
+            }
+            const ref = node.getAttribute('ref') || '';
+            const pretty = ref.replace(/^appendix[_-]?/i, '').replace(/[_-]+/g, ' ').trim();
+            return { title: pretty ? `Appendix ${pretty.toUpperCase()}` : 'Appendix', titleNode: null };
+        }
+
         function renderPaperFromXML() {
             footnoteCounter = 0;
+            eqAutoCounter = 0;
             const xml = currentPaperXML;
             // Reveal sidebar only once we have an XML to show
             const sb = document.getElementById('sidebar');
@@ -2669,12 +3478,24 @@ if (window.conversionArtifacts.usageMetadata?.thoughtsTokenCount) {
                 window.plaintextContent = plaintext;
             }
 
-            const abstract = xml.querySelector('ABSTRACT')?.textContent;
-            if (abstract) {
+            const abstractNode = xml.querySelector('ABSTRACT');
+            if (abstractNode) {
+                // Serialize the abstract's children so <MATH>, <i>, <CITATION> etc.
+                // survive and get transformed, rather than flattening to text.
+                const serializer = new XMLSerializer();
+                const abstractMarkup = Array.from(abstractNode.childNodes)
+                    .map(n => n.nodeType === 3 ? n.nodeValue : serializer.serializeToString(n))
+                    .join('');
+                const abstractHtml = abstractMarkup
+                    .split(/\n\s*\n+/)
+                    .map(par => par.trim())
+                    .filter(Boolean)
+                    .map(par => `<p>${transformXMLContent(par)}</p>`)
+                    .join('');
                 finalHtml += `
                     <div class="abstract">
                         <div class="abstract-label">Abstract</div>
-                        ${escapeHTML(abstract)}
+                        ${abstractHtml}
                     </div>
                 `;
             }
@@ -2771,55 +3592,88 @@ function appendInlineOrTextNode(node) {
     });
 }
 
-            let currentNode = xml.documentElement.firstChild;
-
-            while (currentNode) {
-                const tagName = tagNameOf(currentNode);
-
-                if (currentNode.nodeType === 1 && SKIP_TOP_LEVEL_TAGS.has(tagName)) {
-                    currentNode = currentNode.nextSibling;
-                    continue;
-                }
-
-                const isText = currentNode.nodeType === 3;
-                const isInline = isInlineNode(currentNode);
-
-                if (isText || isInline) {
-                    appendInlineOrTextNode(currentNode);
-                } else if (currentNode.nodeType === 1) {
-                    // First flush any buffered paragraph content
-                    flushParagraphBuffer();
-
-                    if (tagName === 'SECTION' || tagName === 'SUBSECTION' || tagName === 'SUBSUBSECTION') {
-                        // Close sections at same or lower level
-                        while (sectionStack.length > 0 &&
-                               getSectionLevel(sectionStack[sectionStack.length - 1]) >= getSectionLevel(tagName)) {
-                            finalHtml += `</div></div>`;
-                            sectionStack.pop();
-                        }
-
-                        const secId = currentNode.getAttribute('ref') || `sec_${Date.now()}`;
-                        const secTitle = currentNode.textContent.trim() || 'Untitled section';
-                        const level = getSectionLevel(tagName);
-
-                        finalHtml += `
-                            <div id="${escapeAttr(secId)}" class="section section-level-${level}" data-section-id="${escapeAttr(secId)}">
-                                <div class="section-header" data-section-id="${escapeAttr(secId)}">
-                                    <span class="section-toggle">▼</span>
-                                    <h${level + 1}>${escapeHTML(secTitle)}</h${level + 1}>
-                                </div>
-                                <div class="section-content" id="content-${escapeAttr(secId)}">
-                        `;
-
-                        sectionStack.push(tagName);
-                    } else {
-                        // Handle other block elements without breaking them up
-                        const blockContent = new XMLSerializer().serializeToString(currentNode);
-                        finalHtml += transformXMLContent(blockContent);
-                    }
-                }
-                currentNode = currentNode.nextSibling;
+            function openSectionDiv(secId, secTitle, level) {
+                finalHtml += `
+                    <div id="${escapeAttr(secId)}" class="section section-level-${level}" data-section-id="${escapeAttr(secId)}">
+                        <div class="section-header" data-section-id="${escapeAttr(secId)}">
+                            <span class="section-toggle">▼</span>
+                            <h${level + 1}>${escapeHTML(secTitle)}</h${level + 1}>
+                        </div>
+                        <div class="section-content" id="content-${escapeAttr(secId)}">
+                `;
             }
+
+            function firstMeaningfulChild(node) {
+                let child = node.firstChild;
+                while (child && isWhitespaceTextNode(child)) child = child.nextSibling;
+                return child;
+            }
+
+            function appendixTitleFor(node) {
+                return computeAppendixTitle(node);
+            }
+
+            // Recursive walk so appendices get real paragraph/section rendering:
+            // nested SECTION tags keep their ids (for anchors) and heading
+            // formatting, instead of being flattened into one block.
+            function walkNodes(parent, skipNode = null) {
+                const baseDepth = sectionStack.length;
+                let node = parent.firstChild;
+                while (node) {
+                    if (node === skipNode) { node = node.nextSibling; continue; }
+                    const tagName = tagNameOf(node);
+
+                    if (node.nodeType === 1 && parent === xml.documentElement && SKIP_TOP_LEVEL_TAGS.has(tagName)) {
+                        node = node.nextSibling;
+                        continue;
+                    }
+
+                    const isText = node.nodeType === 3;
+                    const isInline = isInlineNode(node);
+
+                    if (isText || isInline) {
+                        appendInlineOrTextNode(node);
+                    } else if (node.nodeType === 1) {
+                        // First flush any buffered paragraph content
+                        flushParagraphBuffer();
+
+                        if (tagName === 'SECTION' || tagName === 'SUBSECTION' || tagName === 'SUBSUBSECTION') {
+                            // Close sections at same or lower level (within this walk)
+                            while (sectionStack.length > baseDepth &&
+                                   getSectionLevel(sectionStack[sectionStack.length - 1]) >= getSectionLevel(tagName)) {
+                                finalHtml += `</div></div>`;
+                                sectionStack.pop();
+                            }
+                            const secId = node.getAttribute('ref') || `sec_${Date.now()}_${sectionStack.length}`;
+                            const secTitle = node.textContent.trim() || 'Untitled section';
+                            openSectionDiv(secId, secTitle, getSectionLevel(tagName));
+                            sectionStack.push(tagName);
+                        } else if (tagName === 'APPENDIX') {
+                            while (sectionStack.length > baseDepth) {
+                                finalHtml += `</div></div>`;
+                                sectionStack.pop();
+                            }
+                            const appId = node.getAttribute('ref') || `appendix_${Date.now()}`;
+                            const { title: appTitle, titleNode } = appendixTitleFor(node);
+                            openSectionDiv(appId, appTitle, 1);
+                            walkNodes(node, titleNode);
+                            flushParagraphBuffer();
+                            while (sectionStack.length > baseDepth) {
+                                finalHtml += `</div></div>`;
+                                sectionStack.pop();
+                            }
+                            finalHtml += `</div></div>`; // close appendix wrapper
+                        } else {
+                            // Handle other block elements without breaking them up
+                            const blockContent = new XMLSerializer().serializeToString(node);
+                            finalHtml += transformXMLContent(blockContent);
+                        }
+                    }
+                    node = node.nextSibling;
+                }
+            }
+
+            walkNodes(xml.documentElement);
 
             // Flush any remaining buffer and close sections
             flushParagraphBuffer();
@@ -2849,18 +3703,27 @@ function appendInlineOrTextNode(node) {
         // ---------------------------------------------------------------
         function buildTOCFromXML() {
             let tocHTML = '';
-            // Correctly get the title from the SECTION tag's text content.
-            currentPaperXML.querySelectorAll('SECTION').forEach(sec => {
-                const id = sec.getAttribute('ref');
-                const title = sec.textContent.trim();
-                if (id && title) {
-                    tocHTML += `
-                        <li><a href="#" data-section-target="${escapeAttr(id)}">
-                            ${escapeHTML(title)}
-                        </a></li>
-                    `;
+            const addEntry = (id, title, cssClass) => {
+                if (!id || !title) return;
+                tocHTML += `
+                    <li${cssClass ? ` class="${cssClass}"` : ''}><a href="#" data-section-target="${escapeAttr(id)}">
+                        ${escapeHTML(title)}
+                    </a></li>
+                `;
+            };
+            const walkToc = (parent) => {
+                for (const node of Array.from(parent.children || [])) {
+                    const tag = String(node.nodeName || '').toUpperCase();
+                    if (tag === 'SECTION') {
+                        addEntry(node.getAttribute('ref'), node.textContent.trim(), '');
+                    } else if (tag === 'APPENDIX') {
+                        const ref = node.getAttribute('ref');
+                        const { title } = computeAppendixTitle(node);
+                        addEntry(ref, title, 'toc-appendix');
+                    }
                 }
-            });
+            };
+            walkToc(currentPaperXML.documentElement);
             tocList.innerHTML = tocHTML;
             tocList.querySelectorAll('a').forEach(link => {
                 link.addEventListener('click', e => {
@@ -2979,9 +3842,16 @@ function appendInlineOrTextNode(node) {
                 .map(para => `<p style="margin-bottom: 1em; line-height: 1.7;">${para.trim()}</p>`)
                 .join('');
             
-            // Convert any LaTeX math (assuming $ or $ delimiters in plaintext)
-            processedText = processedText.replace(/\$\$(.*?)\$\$/g, '$$$$1$$');
-            processedText = processedText.replace(/\$(.*?)\$/g, '\\($1\\)');
+            // Convert LaTeX math ($...$ and $$...$$). Function replacers avoid '$'
+            // escaping pitfalls in replacement strings. Display math is shielded
+            // with placeholders so the inline pass cannot partially match inside it.
+            const displayChunks = [];
+            processedText = processedText.replace(/\$\$([\s\S]*?)\$\$/g, (_, tex) => {
+                displayChunks.push(tex);
+                return `\u0000D${displayChunks.length - 1}\u0000`;
+            });
+            processedText = processedText.replace(/\$([^$]+?)\$/g, (_, tex) => `\\(${tex}\\)`);
+            processedText = processedText.replace(/\u0000D(\d+)\u0000/g, (_, i) => `$$${displayChunks[+i]}$$`);
             
             modal.innerHTML = `
                 <div style="font-size: 1.1rem; line-height: 1.8; font-family: var(--font-serif);">
@@ -3053,16 +3923,70 @@ function appendInlineOrTextNode(node) {
                     <div class="fallback-actions">
                         <button id="downloadPartialOutputBtn">Download partial output + images</button>
                         <button class="secondary" id="copyPartialOutputBtn">Copy preview text</button>
+                        <button id="rerenderXmlBtn">Re-render edited XML</button>
+                        <button class="secondary" id="aiFixXmlBtn" title="Sends the XML and the validation errors to Gemini and asks for a corrected version">Ask AI to repair XML</button>
                     </div>
-                    <strong>${escapeHTML(previewLabel)}</strong>
-                    <pre class="artifact-preview">${escapeHTML(visibleOutput || 'No XML/model text was available. The conversion log may still contain useful diagnostics.')}</pre>
+                    <strong>${escapeHTML(previewLabel)} (editable)</strong>
+                    <textarea id="fallbackXmlEditor" spellcheck="false" style="width:100%; min-height:320px; font-family: ui-monospace, monospace; font-size: 0.8rem; white-space: pre; border: 1px solid var(--border-color); border-radius: 4px; padding: 10px; box-sizing: border-box;">${escapeHTML(visibleOutput || '')}</textarea>
                 </div>`;
+
+            const tryRender = (candidateXml, sourceLabel) => {
+                const prepared = prepareXmlForRendering(candidateXml, { source: sourceLabel });
+                if (!prepared.renderable) {
+                    showXmlFallback(prepared.xmlText || candidateXml, {
+                        message: 'The XML still could not be parsed. The validation warnings below may point at the problem.',
+                        warnings: prepared.warnings
+                    });
+                    return false;
+                }
+                currentPaperXML = prepared.xmlDoc || parseXmlOrThrow(prepared.xmlText);
+                window.generatedXML = prepared.xmlText;
+                window.conversionArtifacts.xmlText = prepared.xmlText;
+                extractPaperText();
+                renderPaperFromXML();
+                buildTOCFromXML();
+                showConversionBanner(prepared.warnings);
+                return true;
+            };
+
+            document.getElementById('rerenderXmlBtn')?.addEventListener('click', () => {
+                const edited = document.getElementById('fallbackXmlEditor')?.value || '';
+                if (!edited.trim()) return;
+                tryRender(edited, 'manual-edit');
+            });
+
+            document.getElementById('aiFixXmlBtn')?.addEventListener('click', async () => {
+                const btn = document.getElementById('aiFixXmlBtn');
+                const edited = document.getElementById('fallbackXmlEditor')?.value || '';
+                if (!edited.trim()) return;
+                const problems = [...new Set([...warnings, ...errors])].slice(0, 12).join('\n');
+                try {
+                    if (btn) { btn.disabled = true; btn.textContent = 'Repairing...'; }
+                    const data = await postGemini({
+                        model: 'gemini-3-flash-preview',
+                        contents: [{ role: 'user', parts: [{ text: `The following XML for an academic paper fails to parse or validate. Reported problems:\n${problems || '(no specific messages; the XML parser rejected it)'}\n\nFix the XML so it is well-formed and complete. Preserve ALL content exactly; change only what is needed for well-formedness (close/repair tags, escape stray & < >, fix attribute quoting). Output ONLY the corrected XML with no markdown fences and no commentary.\n\n${edited}` }] }],
+                        // Gemini 3 docs recommend keeping temperature at default 1.0.
+                        generationConfig: { temperature: 1, maxOutputTokens: 65000, thinkingConfig: { thinkingLevel: 'low' } }
+                    });
+                    const fixed = stripMarkdownFences((data?.candidates?.[0]?.content?.parts || []).map(p => p?.text || '').join('\n'));
+                    if (fixed.trim()) {
+                        const editor = document.getElementById('fallbackXmlEditor');
+                        if (editor) editor.value = fixed;
+                        tryRender(fixed, 'ai-repair');
+                    }
+                } catch (err) {
+                    addWarning('ai-repair', err.message || String(err));
+                    if (btn) { btn.textContent = 'Repair failed - try again'; }
+                } finally {
+                    if (btn) { btn.disabled = false; if (btn.textContent === 'Repairing...') btn.textContent = 'Ask AI to repair XML'; }
+                }
+            });
 
             document.getElementById('downloadPartialOutputBtn')?.addEventListener('click', downloadConversionArtifacts);
             document.getElementById('copyPartialOutputBtn')?.addEventListener('click', async () => {
                 const copyBtn = document.getElementById('copyPartialOutputBtn');
                 try {
-                    await navigator.clipboard.writeText(visibleOutput || '');
+                    await navigator.clipboard.writeText(document.getElementById('fallbackXmlEditor')?.value || visibleOutput || '');
                     if (copyBtn) copyBtn.textContent = 'Copied';
                     setTimeout(() => { if (copyBtn) copyBtn.textContent = 'Copy preview text'; }, 1500);
                 } catch (err) {
@@ -3117,26 +4041,30 @@ return text;
             chatMessages.insertAdjacentHTML('beforeend', `<div class="chat-message ai">Thinking...</div>`);
             
             try {
-                let response = await askAboutPaper(query, chatHistory);
+                // Pass history *excluding* the question just pushed, so the prompt
+                // does not contain the current question twice.
+                let response = await askAboutPaper(query, chatHistory.slice(0, -1));
                 
                 response = response.replace(/(?<!\$)\$(\S(?:[^$]*?\S)?)\$(?!\$)/g, '\\($1\\)');
                 
-                // Check for reference
-                const refMatch = response.match(/<REFERENCE>(.*?)<\/REFERENCE>/);
+                chatHistory.push({ role: 'Assistant', content: response });
+
+                // Escape the model's text before it goes into innerHTML: model
+                // output is untrusted and could otherwise inject markup. The
+                // ↗ View source link is substituted back in after escaping.
+                let safeHtml = escapeHTML(response);
+                const refMatch = safeHtml.match(/&lt;REFERENCE&gt;([\s\S]*?)&lt;\/REFERENCE&gt;/);
                 if (refMatch) {
-                    const refText = refMatch[1];
+                    const refText = decodeHTMLEntities(refMatch[1]);
                     const pageText = document.body.innerText;
-                    
                     if (pageText.includes(refText)) {
-                        response = response.replace(/<REFERENCE>.*?<\/REFERENCE>/, 
+                        safeHtml = safeHtml.replace(/&lt;REFERENCE&gt;[\s\S]*?&lt;\/REFERENCE&gt;/,
                             `<span class="ref-link" data-reference="${encodeURIComponent(refText)}" style="cursor: pointer; color: var(--link-color); text-decoration: none; border-bottom: 1px dotted var(--link-color);">↗ View source</span>`);
                     } else {
-                        response = response.replace(/<REFERENCE>.*?<\/REFERENCE>/, '');
+                        safeHtml = safeHtml.replace(/&lt;REFERENCE&gt;[\s\S]*?&lt;\/REFERENCE&gt;/, '');
                     }
                 }
-                
-                chatHistory.push({ role: 'Assistant', content: response });
-                chatMessages.lastElementChild.innerHTML = response;
+                chatMessages.lastElementChild.innerHTML = safeHtml;
                 chatMessages.lastElementChild.querySelectorAll('.ref-link[data-reference]').forEach(link => {
                     link.addEventListener('click', () => highlightReference(decodeURIComponent(link.dataset.reference || '')));
                 });
@@ -3184,7 +4112,29 @@ return text;
                     setTimeout(() => {
                         highlighted.style.borderColor = 'transparent';
                     }, 3000);
-                    break;
+                    return;
+                }
+            }
+
+            // Fallback: quotes that span inline elements (citations, math, italics)
+            // do not live in a single text node, so exact matching fails. Match
+            // against whole blocks with normalized whitespace and highlight the
+            // containing paragraph.
+            const normalize = (s) => String(s || '').replace(/\s+/g, ' ').trim().toLowerCase();
+            const needle = normalize(text);
+            if (!needle) return;
+            const blocks = mainContent.querySelectorAll('p, li, .equation-display, .theorem-box, .figure-container, .table-container, blockquote');
+            for (const block of blocks) {
+                if (normalize(block.innerText).includes(needle)) {
+                    const prevOutline = block.style.outline;
+                    block.style.outline = '3px solid yellow';
+                    block.style.transition = 'outline-color 3s';
+                    block.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    setTimeout(() => {
+                        block.style.outlineColor = 'transparent';
+                        setTimeout(() => { block.style.outline = prevOutline; }, 3100);
+                    }, 3000);
+                    return;
                 }
             }
         }
@@ -3207,8 +4157,10 @@ return text;
 
         // Chat functionality
         sendBtn.addEventListener('click', sendMessage);
-        chatInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') sendMessage();
+        chatInput.addEventListener('keydown', (e) => {
+            // keydown (not deprecated keypress) + isComposing guard so IME users
+            // composing CJK text do not fire sends on Enter.
+            if (e.key === 'Enter' && !e.isComposing) sendMessage();
         });
 
         // Global click handler for popups
